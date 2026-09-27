@@ -216,7 +216,9 @@ Dự án được thực hiện theo hai giai đoạn chính:
 
 ## 13. Thông tin dự án
 
-**Project:** CABSystem  
-**Organization:** ABC  
-**Project Duration:** 7 tuần  
-**System Type:** Online Ride Booking System
+| Thông tin            | Chi tiết                   |
+| -------------------- | -------------------------- |
+| **Project**          | CABSystem                  |
+| **Organization**     | ABC                        |
+| **Project Duration** | 7 tuần                     |
+| **System Type**      | Online Ride Booking System |
