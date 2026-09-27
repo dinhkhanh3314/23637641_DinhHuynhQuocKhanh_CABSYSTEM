@@ -72,6 +72,8 @@ Thanh toán
 Customer đánh giá
 ```
 
+Chi tiết các quy trình nghiệp vụ được trình bày tại [Business Processes](docs/requirements/business-processes.md).
+
 ## 6. Các yêu cầu chính
 
 ### 6.1. Yêu cầu nghiệp vụ
@@ -128,15 +130,15 @@ Các Use Case được xác định dựa trên ba actor chính:
 - Driver
 - Admin
 
-Use Case Diagram tổng quát được lưu tại:
-
-`docs/diagrams/use-case/`
-
 Danh sách Use Case được trình bày tại [Use Cases](docs/requirements/use-cases.md).
 
 Đặc tả chi tiết từng Use Case được trình bày tại [Use Case Specifications](docs/requirements/use-case-specifications.md).
 
-## 8. Business Rules và trạng thái hệ thống
+Use Case Diagram được lưu tại:
+
+`docs/diagrams/use-case/`
+
+## 8. Business Rules
 
 Một số quy tắc nghiệp vụ chính:
 
@@ -187,7 +189,47 @@ Chi tiết tại:
 - [Test Plan](docs/testing/test-plan.md)
 - [Test Cases](docs/testing/test-cases.md)
 
-## 12. Quy trình phát triển
+## 12. Tài liệu dự án
+
+Các tài liệu chi tiết của CABSystem được tổ chức trong thư mục `docs/`:
+
+### Requirements
+
+- [System Overview](docs/requirements/system-overview.md)
+- [Stakeholders](docs/requirements/stakeholders.md)
+- [Business Objectives](docs/requirements/business-objectives.md)
+- [Project Scope](docs/requirements/project-scope.md)
+- [Business Requirements](docs/requirements/business-requirements.md)
+- [Functional Requirements](docs/requirements/functional-requirements.md)
+- [Non-functional Requirements](docs/requirements/non-functional-requirements.md)
+- [Use Cases](docs/requirements/use-cases.md)
+- [Use Case Specifications](docs/requirements/use-case-specifications.md)
+- [Business Processes](docs/requirements/business-processes.md)
+- [Business Rules](docs/requirements/business-rules.md)
+
+### Diagrams
+
+Các sơ đồ được lưu trong:
+
+`docs/diagrams/`
+
+bao gồm:
+
+- `use-case/`
+- `activity/`
+- `sequence/`
+- `domain/`
+
+### API
+
+- [API Documentation](docs/api/api-docs.md)
+
+### Testing
+
+- [Test Plan](docs/testing/test-plan.md)
+- [Test Cases](docs/testing/test-cases.md)
+
+## 13. Quy trình phát triển
 
 Dự án được thực hiện theo hai giai đoạn chính:
 
@@ -214,7 +256,7 @@ Dự án được thực hiện theo hai giai đoạn chính:
 - Docker hóa hệ thống.
 - Triển khai hệ thống.
 
-## 13. Thông tin dự án
+## 14. Thông tin dự án
 
 | Thông tin            | Chi tiết                   |
 | -------------------- | -------------------------- |
