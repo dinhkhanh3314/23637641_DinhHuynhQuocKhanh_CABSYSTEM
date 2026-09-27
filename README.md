@@ -130,9 +130,7 @@ Các Use Case được xác định dựa trên ba actor chính:
 - Driver
 - Admin
 
-Danh sách Use Case được trình bày tại [Use Cases](docs/requirements/use-cases.md).
-
-Đặc tả chi tiết từng Use Case được trình bày tại [Use Case Specifications](docs/requirements/use-case-specifications.md).
+Danh sách và đặc tả Use Case được trình bày tại [Use Cases](docs/requirements/use-cases.md).
 
 Use Case Diagram được lưu tại:
 
@@ -191,21 +189,19 @@ Chi tiết tại:
 
 ## 12. Tài liệu dự án
 
-Các tài liệu chi tiết của CABSystem được tổ chức trong thư mục `docs/`:
+Các tài liệu chi tiết của CABSystem được tổ chức trong thư mục `docs/`.
 
 ### Requirements
 
 - [System Overview](docs/requirements/system-overview.md)
 - [Stakeholders](docs/requirements/stakeholders.md)
-- [Business Objectives](docs/requirements/business-objectives.md)
-- [Project Scope](docs/requirements/project-scope.md)
 - [Business Requirements](docs/requirements/business-requirements.md)
 - [Functional Requirements](docs/requirements/functional-requirements.md)
 - [Non-functional Requirements](docs/requirements/non-functional-requirements.md)
 - [Use Cases](docs/requirements/use-cases.md)
-- [Use Case Specifications](docs/requirements/use-case-specifications.md)
 - [Business Processes](docs/requirements/business-processes.md)
 - [Business Rules](docs/requirements/business-rules.md)
+- [Project Scope](docs/requirements/project-scope.md)
 
 ### Diagrams
 
@@ -241,8 +237,8 @@ Dự án được thực hiện theo hai giai đoạn chính:
 - Xác định phạm vi.
 - Xác định Business Requirements.
 - Xác định Functional Requirements.
-- Xây dựng Use Case.
-- Đặc tả Use Case.
+- Xác định Non-functional Requirements.
+- Xây dựng và đặc tả Use Case.
 - Phân tích Business Process.
 - Phân tích Business Rules.
 - Xây dựng các sơ đồ cần thiết.
