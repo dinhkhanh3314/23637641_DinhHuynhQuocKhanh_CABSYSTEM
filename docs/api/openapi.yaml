@@ -3,98 +3,86 @@ openapi: 3.0.0
 info:
   title: CABSystem API
   description: |
-    This API provides services for CABSystem, an online vehicle booking system.
-
-    ### Key Features:
-    - **Authentication**: Customer, Driver, and Admin authentication.
-    - **Booking Management**: Create, view, and cancel vehicle bookings.
-    - **Driver Matching**: Find and assign suitable drivers to bookings.
-    - **Trip Management**: Manage and track trips.
-    - **Vehicle Management**: Manage driver vehicles.
-    - **Payment**: Process and manage trip payments.
-    - **Rating**: Allow customers to rate drivers.
-    - **Administration**: Manage customers, drivers, vehicles, bookings, and trips.
-
+    RESTful API documentation for CABSystem - online ride booking system.
+    The system supports Customer, Driver and Admin operations including
+    booking, driver matching, trip management, payment and rating.
   version: 1.0.0
 
 servers:
-  - url: http://localhost:8080/api/v1
-    description: Local server
+  - url: http://localhost:3000/api
+    description: Local development server
 
 tags:
   - name: Authentication
-    description: Authentication and account access
-
+    description: Customer, Driver and Admin authentication
+  - name: Customers
+    description: Customer profile and booking operations
   - name: Bookings
-    description: Booking management
-
+    description: Booking management and driver assignment
   - name: Drivers
-    description: Driver management and booking acceptance
-
+    description: Driver operations and booking responses
   - name: Trips
     description: Trip management and tracking
-
   - name: Vehicles
     description: Vehicle management
-
   - name: Payments
-    description: Payment management
-
+    description: Payment processing and payment results
   - name: Ratings
-    description: Driver rating management
-
+    description: Driver rating operations
   - name: Admin
-    description: Administrative management
+    description: Customer, Driver and system operation management
 
 paths:
   # =========================
-  # Authentication
+  # AUTHENTICATION
   # =========================
 
   /auth/register:
     post:
-      summary: Register a new customer
-      operationId: registerCustomer
       tags:
         - Authentication
-
+      summary: Register Customer account
+      description: Create a new Customer account.
+      operationId: registerCustomer
       requestBody:
-        description: Customer registration information
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/RegisterRequest"
-
       responses:
         "201":
-          description: Customer registered successfully
+          description: Customer account created successfully
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Customer"
-
         "400":
           description: Invalid registration information
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "409":
           description: Account already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /auth/login:
     post:
-      summary: Login to the system
-      operationId: login
       tags:
         - Authentication
-
+      summary: Login
+      description: Authenticate Customer, Driver or Admin.
+      operationId: login
       requestBody:
-        description: Login credentials
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/LoginRequest"
-
       responses:
         "200":
           description: Login successful
@@ -102,32 +90,83 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/LoginResponse"
-
         "401":
           description: Invalid username or password
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   # =========================
-  # Bookings
+  # CUSTOMER
+  # =========================
+
+  /customers/me:
+    get:
+      tags:
+        - Customers
+      summary: Get current Customer profile
+      operationId: getCustomerProfile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    put:
+      tags:
+        - Customers
+      summary: Update current Customer profile
+      operationId: updateCustomerProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCustomerRequest"
+      responses:
+        "200":
+          description: Customer profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "400":
+          description: Invalid information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # =========================
+  # BOOKINGS
   # =========================
 
   /bookings:
     post:
-      summary: Create a new booking
-      operationId: createBooking
       tags:
         - Bookings
-
+      summary: Create Booking
+      description: Customer creates a new ride booking.
+      operationId: createBooking
       security:
         - bearerAuth: []
-
       requestBody:
-        description: Booking information
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateBookingRequest"
-
       responses:
         "201":
           description: Booking created successfully
@@ -135,415 +174,585 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
-
         "400":
           description: Invalid booking information
-
-        "401":
-          description: Unauthorized
-
-    get:
-      summary: Get customer booking history
-      operationId: getBookings
-      tags:
-        - Bookings
-
-      security:
-        - bearerAuth: []
-
-      responses:
-        "200":
-          description: List of bookings
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Booking"
-
+                $ref: "#/components/schemas/Error"
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/Unauthorized"
+
+    get:
+      tags:
+        - Bookings
+      summary: Get Customer booking history
+      operationId: getCustomerBookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          description: Filter bookings by status
+          schema:
+            $ref: "#/components/schemas/BookingStatus"
+      responses:
+        "200":
+          description: List of Customer bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /bookings/{bookingId}:
     get:
-      summary: Get booking by ID
-      operationId: getBookingById
       tags:
         - Bookings
-
+      summary: Get Booking details
+      operationId: getBooking
       security:
         - bearerAuth: []
-
       parameters:
-        - name: bookingId
-          in: path
-          required: true
-          description: ID of the booking
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/BookingId"
       responses:
         "200":
-          description: Booking found
+          description: Booking details
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Booking"
-
-        "404":
-          description: Booking not found
-
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
     delete:
-      summary: Cancel a booking
-      operationId: cancelBooking
       tags:
         - Bookings
-
+      summary: Cancel Booking
+      description: Cancel a Booking if its current status allows cancellation.
+      operationId: cancelBooking
       security:
         - bearerAuth: []
-
       parameters:
-        - name: bookingId
-          in: path
-          required: true
-          description: ID of the booking to cancel
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/BookingId"
       responses:
         "200":
           description: Booking cancelled successfully
-
-        "400":
-          description: Booking cannot be cancelled
-
-        "404":
-          description: Booking not found
-
-        "401":
-          description: Unauthorized
-
-  # =========================
-  # Drivers
-  # =========================
-
-  /drivers:
-    get:
-      summary: Get list of drivers
-      operationId: getDrivers
-      tags:
-        - Drivers
-
-      security:
-        - bearerAuth: []
-
-      responses:
-        "200":
-          description: List of drivers
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Driver"
-
+                $ref: "#/components/schemas/Booking"
+        "400":
+          description: Booking cannot be cancelled in its current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
-  /drivers/{driverId}:
+  /bookings/{bookingId}/status:
     get:
-      summary: Get driver by ID
-      operationId: getDriverById
       tags:
-        - Drivers
-
+        - Bookings
+      summary: Get Booking status
+      operationId: getBookingStatus
       security:
         - bearerAuth: []
-
       parameters:
-        - name: driverId
-          in: path
-          required: true
-          description: ID of the driver
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/BookingId"
       responses:
         "200":
-          description: Driver found
+          description: Current Booking status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /bookings/{bookingId}/matching:
+    post:
+      tags:
+        - Bookings
+      summary: Find suitable Driver
+      description: |
+        Find an available Driver based on Driver status, location and
+        suitable Vehicle type.
+      operationId: findSuitableDriver
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BookingId"
+      responses:
+        "200":
+          description: Driver found and Booking sent to Driver
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverMatchResponse"
+        "404":
+          description: No suitable Driver found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /bookings/{bookingId}/alternative-driver:
+    post:
+      tags:
+        - Bookings
+      summary: Find alternative Driver
+      description: |
+        Find another Driver when the previously selected Driver rejects
+        or does not respond to the Booking.
+      operationId: findAlternativeDriver
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/BookingId"
+      responses:
+        "200":
+          description: Alternative Driver found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverMatchResponse"
+        "404":
+          description: No alternative Driver found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # =========================
+  # DRIVER
+  # =========================
+
+  /drivers/me:
+    get:
+      tags:
+        - Drivers
+      summary: Get current Driver profile
+      operationId: getDriverProfile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Driver profile
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Driver"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
-        "404":
-          description: Driver not found
+    put:
+      tags:
+        - Drivers
+      summary: Update current Driver profile
+      operationId: updateDriverProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDriverRequest"
+      responses:
+        "200":
+          description: Driver profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /drivers/me/status:
+    put:
+      tags:
+        - Drivers
+      summary: Update Driver availability status
+      operationId: updateDriverStatus
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DriverStatusRequest"
+      responses:
+        "200":
+          description: Driver status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+        "400":
+          description: Invalid Driver status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /drivers/me/location:
+    put:
+      tags:
+        - Drivers
+      summary: Update Driver location
+      description: Update the current Driver location used for Driver matching.
+      operationId: updateDriverLocation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Location"
+      responses:
+        "200":
+          description: Driver location updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Location"
+        "400":
+          description: Invalid location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /drivers/me/bookings:
+    get:
+      tags:
+        - Drivers
+      summary: Get Driver assigned Bookings
+      operationId: getDriverBookings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: List of Driver Bookings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
   /bookings/{bookingId}/response:
     post:
-      summary: Accept or reject a booking
-      operationId: respondToBooking
       tags:
         - Drivers
-
+      summary: Respond to Booking
+      description: Driver accepts or rejects a Booking.
+      operationId: respondToBooking
       security:
         - bearerAuth: []
-
       parameters:
-        - name: bookingId
-          in: path
-          required: true
-          description: ID of the booking
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/BookingId"
       requestBody:
-        description: Driver response to booking
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/BookingResponseRequest"
-
       responses:
         "200":
-          description: Booking response processed successfully
-
+          description: Booking response processed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
         "400":
-          description: Invalid booking response
-
+          description: Invalid response or Booking state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # =========================
-  # Trips
+  # TRIPS
   # =========================
 
   /trips:
     get:
-      summary: Get trip history
-      operationId: getTrips
       tags:
         - Trips
-
+      summary: Get Trip history
+      operationId: getTrips
       security:
         - bearerAuth: []
-
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/TripStatus"
       responses:
         "200":
-          description: List of trips
+          description: Trip history
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Trip"
-
+                $ref: "#/components/schemas/TripListResponse"
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/Unauthorized"
 
   /trips/{tripId}:
     get:
-      summary: Get trip by ID
-      operationId: getTripById
       tags:
         - Trips
-
+      summary: Get Trip details
+      operationId: getTrip
       security:
         - bearerAuth: []
-
       parameters:
-        - name: tripId
-          in: path
-          required: true
-          description: ID of the trip
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/TripId"
       responses:
         "200":
-          description: Trip found
+          description: Trip details
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Trip"
-
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Trip not found
+          $ref: "#/components/responses/NotFound"
 
+  /trips/{tripId}/status:
     put:
-      summary: Update trip status
-      operationId: updateTripStatus
       tags:
         - Trips
-
+      summary: Update Trip status
+      description: Driver updates the current Trip status.
+      operationId: updateTripStatus
       security:
         - bearerAuth: []
-
       parameters:
-        - name: tripId
-          in: path
-          required: true
-          description: ID of the trip
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/TripId"
       requestBody:
-        description: New trip status
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/TripStatusRequest"
-
       responses:
         "200":
           description: Trip status updated successfully
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
         "400":
-          description: Invalid trip status
-
+          description: Invalid Trip status transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Trip not found
+          $ref: "#/components/responses/NotFound"
 
-  # =========================
-  # Vehicles
-  # =========================
-
-  /vehicles:
-    get:
-      summary: Get list of vehicles
-      operationId: getVehicles
+  /trips/{tripId}/complete:
+    post:
       tags:
-        - Vehicles
-
+        - Trips
+      summary: Complete Trip
+      description: Complete a Trip and trigger the payment process.
+      operationId: completeTrip
       security:
         - bearerAuth: []
-
+      parameters:
+        - $ref: "#/components/parameters/TripId"
       responses:
         "200":
-          description: List of vehicles
+          description: Trip completed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "400":
+          description: Trip cannot be completed in its current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # =========================
+  # VEHICLES
+  # =========================
+
+  /drivers/me/vehicles:
+    get:
+      tags:
+        - Vehicles
+      summary: Get Driver vehicles
+      operationId: getDriverVehicles
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Driver vehicles
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/Vehicle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
     post:
-      summary: Create a vehicle
-      operationId: createVehicle
       tags:
         - Vehicles
-
+      summary: Add Driver vehicle
+      operationId: createDriverVehicle
       security:
         - bearerAuth: []
-
       requestBody:
-        description: Vehicle information
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Vehicle"
-
+              $ref: "#/components/schemas/VehicleRequest"
       responses:
         "201":
           description: Vehicle created successfully
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
         "400":
           description: Invalid vehicle information
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
 
-  /vehicles/{vehicleId}:
-    put:
-      summary: Update vehicle
-      operationId: updateVehicle
+  /drivers/me/vehicles/{vehicleId}:
+    get:
       tags:
         - Vehicles
-
+      summary: Get Driver vehicle
+      operationId: getDriverVehicle
       security:
         - bearerAuth: []
-
       parameters:
-        - name: vehicleId
-          in: path
-          required: true
-          description: ID of the vehicle
-          schema:
-            type: integer
-            format: int64
+        - $ref: "#/components/parameters/VehicleId"
+      responses:
+        "200":
+          description: Vehicle details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
+    put:
+      tags:
+        - Vehicles
+      summary: Update Driver vehicle
+      operationId: updateDriverVehicle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/VehicleId"
       requestBody:
-        description: Updated vehicle information
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/Vehicle"
-
+              $ref: "#/components/schemas/VehicleRequest"
       responses:
         "200":
           description: Vehicle updated successfully
-
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Vehicle not found
+          $ref: "#/components/responses/NotFound"
 
     delete:
-      summary: Delete vehicle
-      operationId: deleteVehicle
       tags:
         - Vehicles
-
+      summary: Delete Driver vehicle
+      operationId: deleteDriverVehicle
       security:
         - bearerAuth: []
-
       parameters:
-        - name: vehicleId
-          in: path
-          required: true
-          description: ID of the vehicle
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/VehicleId"
       responses:
         "204":
           description: Vehicle deleted successfully
-
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Vehicle not found
+          $ref: "#/components/responses/NotFound"
 
   # =========================
-  # Payments
+  # PAYMENTS
   # =========================
 
   /payments:
     post:
-      summary: Create a payment
-      operationId: createPayment
       tags:
         - Payments
-
+      summary: Create Payment
+      description: Create a payment after a Trip is completed.
+      operationId: createPayment
       security:
         - bearerAuth: []
-
       requestBody:
-        description: Payment information
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreatePaymentRequest"
-
       responses:
         "201":
           description: Payment created successfully
@@ -551,65 +760,87 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Payment"
-
         "400":
-          description: Invalid payment information
-
+          description: Payment cannot be created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/Unauthorized"
 
   /payments/{paymentId}:
     get:
-      summary: Get payment result
-      operationId: getPayment
       tags:
         - Payments
-
+      summary: Get Payment result
+      operationId: getPayment
       security:
         - bearerAuth: []
-
       parameters:
-        - name: paymentId
-          in: path
-          required: true
-          description: ID of the payment
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/PaymentId"
       responses:
         "200":
-          description: Payment result
+          description: Payment details and result
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Payment"
-
+        "401":
+          $ref: "#/components/responses/Unauthorized"
         "404":
-          description: Payment not found
+          $ref: "#/components/responses/NotFound"
 
-  # =========================
-  # Ratings
-  # =========================
-
-  /ratings:
+  /payments/{paymentId}/retry:
     post:
-      summary: Rate a driver
-      operationId: createRating
       tags:
-        - Ratings
-
+        - Payments
+      summary: Retry failed Payment
+      description: Retry a Payment that previously failed.
+      operationId: retryPayment
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PaymentId"
+      responses:
+        "200":
+          description: Payment retry initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+        "400":
+          description: Payment cannot be retried
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
+  # =========================
+  # RATINGS
+  # =========================
+
+  /trips/{tripId}/rating:
+    post:
+      tags:
+        - Ratings
+      summary: Rate Driver
+      description: Customer rates the Driver after Trip completion.
+      operationId: createRating
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
       requestBody:
-        description: Driver rating information
         required: true
         content:
           application/json:
             schema:
               $ref: "#/components/schemas/CreateRatingRequest"
-
       responses:
         "201":
           description: Rating created successfully
@@ -617,394 +848,1068 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Rating"
-
         "400":
-          description: Invalid rating
-
+          description: Trip cannot be rated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
-          description: Unauthorized
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Trip has already been rated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 
   /drivers/{driverId}/ratings:
     get:
-      summary: Get driver ratings
-      operationId: getDriverRatings
       tags:
         - Ratings
-
+      summary: Get Driver ratings
+      operationId: getDriverRatings
+      security:
+        - bearerAuth: []
       parameters:
-        - name: driverId
-          in: path
-          required: true
-          description: ID of the driver
-          schema:
-            type: integer
-            format: int64
-
+        - $ref: "#/components/parameters/DriverId"
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
         "200":
           description: Driver ratings
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Rating"
+                $ref: "#/components/schemas/RatingListResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   # =========================
-  # Admin
+  # ADMIN
   # =========================
 
   /admin/customers:
     get:
-      summary: Get list of customers
-      operationId: getCustomers
       tags:
         - Admin
-
+      summary: Manage Customers
+      operationId: getCustomers
       security:
         - bearerAuth: []
-
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: search
+          in: query
+          description: Search Customer by name or phone
+          schema:
+            type: string
       responses:
         "200":
-          description: List of customers
+          description: Customer list
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Customer"
-
+                $ref: "#/components/schemas/CustomerListResponse"
         "401":
-          description: Unauthorized
-
+          $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Forbidden
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/customers/{customerId}:
+    get:
+      tags:
+        - Admin
+      summary: Get Customer details
+      operationId: getCustomerById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "200":
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete Customer
+      operationId: deleteCustomer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/CustomerId"
+      responses:
+        "204":
+          description: Customer deleted successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /admin/drivers:
     get:
-      summary: Get list of drivers for administration
-      operationId: getAdminDrivers
       tags:
         - Admin
-
+      summary: Manage Drivers
+      operationId: getDrivers
       security:
         - bearerAuth: []
-
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/DriverStatus"
       responses:
         "200":
-          description: List of drivers
+          description: Driver list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DriverListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/drivers/{driverId}:
+    get:
+      tags:
+        - Admin
+      summary: Get Driver details
+      operationId: getDriverById
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DriverId"
+      responses:
+        "200":
+          description: Driver details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete Driver
+      operationId: deleteDriver
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/DriverId"
+      responses:
+        "204":
+          description: Driver deleted successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /admin/vehicles:
+    get:
+      tags:
+        - Admin
+      summary: Manage Vehicles
+      operationId: getVehicles
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Vehicle list
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Driver"
-
+                  $ref: "#/components/schemas/Vehicle"
         "401":
-          description: Unauthorized
-
+          $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Forbidden
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/vehicles/{vehicleId}:
+    put:
+      tags:
+        - Admin
+      summary: Update Vehicle
+      operationId: updateVehicleByAdmin
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/VehicleId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VehicleRequest"
+      responses:
+        "200":
+          description: Vehicle updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Vehicle"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags:
+        - Admin
+      summary: Delete Vehicle
+      operationId: deleteVehicleByAdmin
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/VehicleId"
+      responses:
+        "204":
+          description: Vehicle deleted successfully
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /admin/bookings:
     get:
-      summary: Monitor bookings and trips
-      operationId: monitorBookings
       tags:
         - Admin
-
+      summary: Monitor Bookings
+      description: Admin monitors Booking activities.
+      operationId: monitorBookings
       security:
         - bearerAuth: []
-
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/BookingStatus"
       responses:
         "200":
-          description: Booking monitoring information
-
+          description: Booking monitoring data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingListResponse"
         "401":
-          description: Unauthorized
-
+          $ref: "#/components/responses/Unauthorized"
         "403":
-          description: Forbidden
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/trips:
+    get:
+      tags:
+        - Admin
+      summary: Monitor Trips
+      description: Admin monitors Trip activities.
+      operationId: monitorTrips
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/TripStatus"
+      responses:
+        "200":
+          description: Trip monitoring data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TripListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+  /admin/trips/{tripId}:
+    get:
+      tags:
+        - Admin
+      summary: View Trip details
+      description: Admin views detailed information about a Trip.
+      operationId: getTripByAdmin
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TripId"
+      responses:
+        "200":
+          description: Trip details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
 components:
+  # =========================
+  # SECURITY
+  # =========================
+
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+      description: JWT authentication token
+
+  # =========================
+  # PARAMETERS
+  # =========================
+
+  parameters:
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      description: Unique Booking identifier
+      schema:
+        type: string
+        format: uuid
+
+    CustomerId:
+      name: customerId
+      in: path
+      required: true
+      description: Unique Customer identifier
+      schema:
+        type: string
+        format: uuid
+
+    DriverId:
+      name: driverId
+      in: path
+      required: true
+      description: Unique Driver identifier
+      schema:
+        type: string
+        format: uuid
+
+    TripId:
+      name: tripId
+      in: path
+      required: true
+      description: Unique Trip identifier
+      schema:
+        type: string
+        format: uuid
+
+    VehicleId:
+      name: vehicleId
+      in: path
+      required: true
+      description: Unique Vehicle identifier
+      schema:
+        type: string
+        format: uuid
+
+    PaymentId:
+      name: paymentId
+      in: path
+      required: true
+      description: Unique Payment identifier
+      schema:
+        type: string
+        format: uuid
+
+    Page:
+      name: page
+      in: query
+      description: Page number
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    Limit:
+      name: limit
+      in: query
+      description: Number of records per page
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  # =========================
+  # RESPONSES
+  # =========================
+
+  responses:
+    Unauthorized:
+      description: Authentication required or token is invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Forbidden:
+      description: User does not have permission to perform this operation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    NotFound:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  # =========================
+  # SCHEMAS
+  # =========================
 
   schemas:
+    # ---------- AUTH ----------
+
     RegisterRequest:
       type: object
+      required:
+        - fullName
+        - phone
+        - password
       properties:
-        username:
+        fullName:
           type: string
+          example: Nguyen Van A
+        phone:
+          type: string
+          example: "0901234567"
+        email:
+          type: string
+          format: email
+          example: customer@example.com
         password:
           type: string
           format: password
-        fullname:
-          type: string
-
-      required:
-        - username
-        - password
-        - fullname
+          minLength: 8
+          example: Password123
 
     LoginRequest:
       type: object
+      required:
+        - phone
+        - password
       properties:
-        username:
+        phone:
           type: string
+          example: "0901234567"
         password:
           type: string
           format: password
-
-      required:
-        - username
-        - password
+          example: Password123
 
     LoginResponse:
       type: object
       properties:
         accessToken:
           type: string
+          example: eyJhbGciOiJIUzI1NiIs...
         tokenType:
           type: string
           example: Bearer
+        expiresIn:
+          type: integer
+          example: 3600
+        user:
+          $ref: "#/components/schemas/UserSummary"
+
+    UserSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        fullName:
+          type: string
+          example: Nguyen Van A
+        phone:
+          type: string
+          example: "0901234567"
+        role:
+          $ref: "#/components/schemas/UserRole"
+
+    # ---------- CUSTOMER ----------
 
     Customer:
       type: object
       properties:
-        customerId:
-          type: integer
-          format: int64
-        username:
+        id:
           type: string
-        fullname:
+          format: uuid
+        fullName:
           type: string
+          example: Nguyen Van A
+        phone:
+          type: string
+          example: "0901234567"
+        email:
+          type: string
+          format: email
+          example: customer@example.com
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
-      required:
-        - customerId
-        - username
-        - fullname
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+          example: Nguyen Van A
+        email:
+          type: string
+          format: email
+          example: customer@example.com
+
+    # ---------- DRIVER ----------
 
     Driver:
       type: object
       properties:
-        driverId:
-          type: integer
-          format: int64
-        username:
+        id:
           type: string
-        fullname:
+          format: uuid
+        fullName:
           type: string
+          example: Tran Van B
+        phone:
+          type: string
+          example: "0912345678"
         status:
-          type: string
-          enum:
-            - ACTIVE
-            - INACTIVE
-            - BUSY
+          $ref: "#/components/schemas/DriverStatus"
+        location:
+          $ref: "#/components/schemas/Location"
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+          example: 4.8
+        vehicles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Vehicle"
 
-      required:
-        - driverId
-        - username
-        - fullname
-        - status
-
-    Vehicle:
+    UpdateDriverRequest:
       type: object
       properties:
-        vehicleId:
-          type: integer
-          format: int64
-        licensePlate:
+        fullName:
           type: string
-        vehicleType:
+          example: Tran Van B
+        phone:
           type: string
-        status:
-          type: string
+          example: "0912345678"
 
+    DriverStatusRequest:
+      type: object
       required:
-        - vehicleId
-        - licensePlate
-        - vehicleType
+        - status
+      properties:
+        status:
+          $ref: "#/components/schemas/DriverStatus"
+
+    DriverStatus:
+      type: string
+      enum:
+        - OFFLINE
+        - AVAILABLE
+        - BUSY
+      example: AVAILABLE
+
+    # ---------- LOCATION ----------
+
+    Location:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: 10.7769
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: 106.7009
+
+    # ---------- BOOKING ----------
 
     Booking:
       type: object
       properties:
-        bookingId:
-          type: integer
-          format: int64
+        id:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        driverId:
+          type: string
+          format: uuid
+          nullable: true
         pickupLocation:
+          $ref: "#/components/schemas/Location"
+        pickupAddress:
           type: string
-        dropoffLocation:
+          example: 1 Nguyen Hue, District 1, Ho Chi Minh City
+        destinationLocation:
+          $ref: "#/components/schemas/Location"
+        destinationAddress:
           type: string
+          example: 100 Dien Bien Phu, Binh Thanh District, Ho Chi Minh City
         vehicleType:
-          type: string
+          $ref: "#/components/schemas/VehicleType"
         status:
+          $ref: "#/components/schemas/BookingStatus"
+        createdAt:
           type: string
-          enum:
-            - SEARCHING_DRIVER
-            - SENT_TO_DRIVER
-            - ACCEPTED
-            - CANCELLED
-
-      required:
-        - bookingId
-        - pickupLocation
-        - dropoffLocation
-        - status
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     CreateBookingRequest:
       type: object
-      properties:
-        pickupLocation:
-          type: string
-        dropoffLocation:
-          type: string
-        vehicleType:
-          type: string
-
       required:
         - pickupLocation
-        - dropoffLocation
+        - pickupAddress
+        - destinationLocation
+        - destinationAddress
         - vehicleType
+      properties:
+        pickupLocation:
+          $ref: "#/components/schemas/Location"
+        pickupAddress:
+          type: string
+          example: 1 Nguyen Hue, District 1, Ho Chi Minh City
+        destinationLocation:
+          $ref: "#/components/schemas/Location"
+        destinationAddress:
+          type: string
+          example: 100 Dien Bien Phu, Binh Thanh District, Ho Chi Minh City
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
 
     BookingResponseRequest:
       type: object
+      required:
+        - response
       properties:
         response:
           type: string
           enum:
             - ACCEPT
             - REJECT
+          example: ACCEPT
 
-      required:
-        - response
+    BookingStatusResponse:
+      type: object
+      properties:
+        bookingId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+
+    BookingStatus:
+      type: string
+      enum:
+        - SEARCHING_DRIVER
+        - SENT_TO_DRIVER
+        - ACCEPTED
+        - CANCELLED
+        - NO_DRIVER
+      example: SEARCHING_DRIVER
+
+    DriverMatchResponse:
+      type: object
+      properties:
+        bookingId:
+          type: string
+          format: uuid
+        driver:
+          $ref: "#/components/schemas/Driver"
+        message:
+          type: string
+          example: Booking has been sent to the Driver
+
+    BookingListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Booking"
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 50
+
+    # ---------- TRIP ----------
 
     Trip:
       type: object
       properties:
-        tripId:
-          type: integer
-          format: int64
-        bookingId:
-          type: integer
-          format: int64
-        driverId:
-          type: integer
-          format: int64
-        status:
+        id:
           type: string
-          enum:
-            - CREATED
-            - IN_PROGRESS
-            - COMPLETED
-
-      required:
-        - tripId
-        - bookingId
-        - driverId
-        - status
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
+        driverId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/TripStatus"
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        fare:
+          type: number
+          format: double
+          example: 150000
 
     TripStatusRequest:
       type: object
+      required:
+        - status
       properties:
+        status:
+          $ref: "#/components/schemas/TripStatus"
+
+    TripStatus:
+      type: string
+      enum:
+        - CREATED
+        - IN_PROGRESS
+        - COMPLETED
+      example: IN_PROGRESS
+
+    TripListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Trip"
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 20
+
+    # ---------- VEHICLE ----------
+
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        driverId:
+          type: string
+          format: uuid
+        licensePlate:
+          type: string
+          example: 51A-123.45
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        brand:
+          type: string
+          example: Toyota
+        model:
+          type: string
+          example: Vios
+        color:
+          type: string
+          example: White
         status:
           type: string
           enum:
-            - IN_PROGRESS
-            - COMPLETED
+            - ACTIVE
+            - INACTIVE
+          example: ACTIVE
 
+    VehicleRequest:
+      type: object
       required:
-        - status
+        - licensePlate
+        - vehicleType
+        - brand
+        - model
+        - color
+      properties:
+        licensePlate:
+          type: string
+          example: 51A-123.45
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        brand:
+          type: string
+          example: Toyota
+        model:
+          type: string
+          example: Vios
+        color:
+          type: string
+          example: White
+
+    VehicleType:
+      type: string
+      enum:
+        - MOTORBIKE
+        - CAR
+        - SUV
+      example: CAR
+
+    # ---------- PAYMENT ----------
 
     CreatePaymentRequest:
       type: object
-      properties:
-        tripId:
-          type: integer
-          format: int64
-        paymentMethod:
-          type: string
-          enum:
-            - CASH
-            - ELECTRONIC
-
       required:
         - tripId
-        - paymentMethod
+        - method
+      properties:
+        tripId:
+          type: string
+          format: uuid
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
 
     Payment:
       type: object
       properties:
-        paymentId:
-          type: integer
-          format: int64
+        id:
+          type: string
+          format: uuid
         tripId:
-          type: integer
-          format: int64
+          type: string
+          format: uuid
         amount:
           type: number
           format: double
-        paymentMethod:
-          type: string
-          enum:
-            - CASH
-            - ELECTRONIC
+          example: 150000
+        method:
+          $ref: "#/components/schemas/PaymentMethod"
         status:
+          $ref: "#/components/schemas/PaymentStatus"
+        transactionId:
           type: string
-          enum:
-            - PENDING
-            - PROCESSING
-            - SUCCESS
-            - FAILED
+          nullable: true
+          example: TXN-123456
+        createdAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
 
-      required:
-        - paymentId
-        - tripId
-        - amount
-        - paymentMethod
-        - status
+    PaymentMethod:
+      type: string
+      enum:
+        - CASH
+        - ELECTRONIC
+      example: ELECTRONIC
+
+    PaymentStatus:
+      type: string
+      enum:
+        - PENDING
+        - PROCESSING
+        - SUCCESS
+        - FAILED
+      example: SUCCESS
+
+    # ---------- RATING ----------
 
     CreateRatingRequest:
       type: object
+      required:
+        - score
       properties:
-        tripId:
-          type: integer
-          format: int64
-        rating:
+        score:
           type: integer
           minimum: 1
           maximum: 5
+          example: 5
         comment:
           type: string
-
-      required:
-        - tripId
-        - rating
+          example: Driver was friendly and arrived on time.
 
     Rating:
       type: object
       properties:
-        ratingId:
-          type: integer
-          format: int64
+        id:
+          type: string
+          format: uuid
         tripId:
-          type: integer
-          format: int64
+          type: string
+          format: uuid
+        customerId:
+          type: string
+          format: uuid
         driverId:
-          type: integer
-          format: int64
-        rating:
+          type: string
+          format: uuid
+        score:
           type: integer
           minimum: 1
           maximum: 5
+          example: 5
         comment:
           type: string
+          example: Driver was friendly and arrived on time.
+        createdAt:
+          type: string
+          format: date-time
 
+    RatingListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Rating"
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 15
+
+    # ---------- ADMIN ----------
+
+    UserRole:
+      type: string
+      enum:
+        - CUSTOMER
+        - DRIVER
+        - ADMIN
+      example: CUSTOMER
+
+    CustomerListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 100
+
+    DriverListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Driver"
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 30
+
+    # ---------- COMMON ----------
+
+    Error:
+      type: object
       required:
-        - ratingId
-        - tripId
-        - driverId
-        - rating
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: BOOKING_NOT_FOUND
+        message:
+          type: string
+          example: Booking was not found.
