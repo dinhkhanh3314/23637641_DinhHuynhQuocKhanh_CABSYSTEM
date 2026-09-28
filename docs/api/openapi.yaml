@@ -1,1118 +1,1322 @@
-openapi: 3.0.3
+openapi: 3.0.0
+
 info:
   title: CABSystem API
+  description: REST API cho hệ thống đặt xe CABSystem
   version: 1.0.0
-  description: RESTful API cho hệ thống đặt xe CABSystem.
+
 servers:
-- url: http://localhost:3000/api
+  - url: http://localhost:3000/api
+    description: Local server
+
 tags:
-- name: Authentication
-  description: Đăng ký và đăng nhập
-- name: Customers
-  description: Customer quản lý thông tin và Booking
-- name: Drivers
-  description: Driver quản lý thông tin, trạng thái và Booking
-- name: Bookings
-  description: Quản lý Booking và tìm Driver
-- name: Trips
-  description: Quản lý Trip
-- name: Vehicles
-  description: Quản lý Vehicle
-- name: Payments
-  description: Thanh toán
-- name: Ratings
-  description: Đánh giá Driver
-- name: Admin
-  description: Admin quản lý Customer, Driver, Vehicle và theo dõi Booking/Trip
+  - name: Authentication
+    description: Đăng ký và đăng nhập
+  - name: Customer
+    description: Chức năng của Customer
+  - name: Booking
+    description: Quản lý Booking
+  - name: Driver
+    description: Chức năng của Driver
+  - name: Trip
+    description: Quản lý Trip
+  - name: Vehicle
+    description: Quản lý Vehicle
+  - name: Payment
+    description: Thanh toán
+  - name: Rating
+    description: Đánh giá Driver
+  - name: Admin
+    description: Chức năng quản trị và vận hành
+
 paths:
+  # =========================================================
+  # AUTHENTICATION
+  # =========================================================
+
   /auth/register:
     post:
       tags:
-      - Authentication
+        - Authentication
       summary: Đăng ký Customer
+      description: Customer đăng ký tài khoản mới.
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
       responses:
-        '201':
+        "201":
           description: Đăng ký thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /auth/login:
     post:
       tags:
-      - Authentication
+        - Authentication
       summary: Đăng nhập
+      description: Customer, Driver hoặc Admin đăng nhập hệ thống.
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: Đăng nhập thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # =========================================================
+  # CUSTOMER
+  # =========================================================
+
   /customers/me:
     get:
       tags:
-      - Customers
-      summary: Xem profile Customer
+        - Customer
+      summary: Xem thông tin cá nhân
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Thông tin Customer
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/Customer"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
     put:
       tags:
-      - Customers
-      summary: Cập nhật profile Customer
+        - Customer
+      summary: Cập nhật thông tin cá nhân
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateCustomerRequest'
+              $ref: "#/components/schemas/UpdateCustomerRequest"
       responses:
-        '200':
+        "200":
           description: Cập nhật thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # =========================================================
+  # BOOKING
+  # =========================================================
+
   /bookings:
     post:
       tags:
-      - Bookings
+        - Booking
       summary: Tạo Booking
+      description: Customer tạo yêu cầu đặt xe.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateBookingRequest'
+              $ref: "#/components/schemas/CreateBookingRequest"
       responses:
-        '201':
-          description: Booking được tạo
+        "201":
+          description: Tạo Booking thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Booking'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/Booking"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
     get:
       tags:
-      - Bookings
-      summary: Xem lịch sử Booking của Customer
+        - Booking
+      summary: Xem lịch sử Booking
+      description: Customer xem các Booking của mình.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Booking
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BookingListResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/BookingListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /bookings/{bookingId}:
     get:
       tags:
-      - Bookings
+        - Booking
       summary: Xem chi tiết Booking
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/BookingId'
+        - $ref: "#/components/parameters/BookingId"
       responses:
-        '200':
+        "200":
           description: Chi tiết Booking
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Booking'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/Booking"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     delete:
       tags:
-      - Bookings
+        - Booking
       summary: Hủy Booking
+      description: Customer hủy Booking theo chính sách của hệ thống.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/BookingId'
+        - $ref: "#/components/parameters/BookingId"
       responses:
-        '204':
+        "200":
           description: Hủy Booking thành công
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /bookings/{bookingId}/status:
     get:
       tags:
-      - Bookings
+        - Booking
       summary: Xem trạng thái Booking
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/BookingId'
+        - $ref: "#/components/parameters/BookingId"
       responses:
-        '200':
+        "200":
           description: Trạng thái Booking
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BookingStatusResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/BookingStatusResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # =========================================================
+  # DRIVER MATCHING
+  # =========================================================
+
   /bookings/{bookingId}/matching:
     post:
       tags:
-      - Bookings
-      summary: Bắt đầu tìm Driver phù hợp
+        - Booking
+      summary: Tìm Driver phù hợp
+      description: Hệ thống tìm Driver đang hoạt động và có Vehicle phù hợp với Booking.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/BookingId'
+        - $ref: "#/components/parameters/BookingId"
       responses:
-        '200':
-          description: Kết quả matching
+        "200":
+          description: Kết quả tìm Driver
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DriverMatchResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/DriverMatchResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /bookings/{bookingId}/alternative-driver:
     post:
       tags:
-      - Bookings
+        - Booking
       summary: Tìm Driver thay thế
+      description: Tìm Driver khác khi Driver hiện tại từ chối hoặc không phản hồi.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/BookingId'
+        - $ref: "#/components/parameters/BookingId"
       responses:
-        '200':
-          description: Đã thực hiện tìm Driver thay thế
+        "200":
+          description: Kết quả tìm Driver thay thế
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DriverMatchResponse'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/DriverMatchResponse"
+        "404":
+          description: Không tìm được Driver phù hợp
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # =========================================================
+  # DRIVER
+  # =========================================================
+
   /drivers/me:
     get:
       tags:
-      - Drivers
-      summary: Xem profile Driver
+        - Driver
+      summary: Xem thông tin Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Thông tin Driver
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Driver'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/Driver"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
     put:
       tags:
-      - Drivers
-      summary: Cập nhật profile Driver
+        - Driver
+      summary: Cập nhật thông tin Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UpdateDriverRequest'
+              $ref: "#/components/schemas/UpdateDriverRequest"
       responses:
-        '200':
+        "200":
           description: Cập nhật thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Driver'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
+                $ref: "#/components/schemas/Driver"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /drivers/me/status:
     put:
       tags:
-      - Drivers
+        - Driver
       summary: Cập nhật trạng thái hoạt động
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DriverStatusRequest'
+              $ref: "#/components/schemas/DriverStatusRequest"
       responses:
-        '200':
+        "200":
           description: Cập nhật trạng thái thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Driver'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Driver"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /drivers/me/location:
     put:
       tags:
-      - Drivers
+        - Driver
       summary: Cập nhật vị trí Driver
+      description: Driver cập nhật vị trí để phục vụ việc tìm kiếm và matching.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Location'
+              $ref: "#/components/schemas/Location"
       responses:
-        '200':
+        "200":
           description: Cập nhật vị trí thành công
-        '400':
-          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /drivers/me/bookings:
     get:
       tags:
-      - Drivers
-      summary: Xem Booking được gửi cho Driver
+        - Driver
+      summary: Xem Booking được gửi
+      description: Driver xem các Booking đang chờ phản hồi.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Booking
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BookingListResponse'
+                $ref: "#/components/schemas/BookingListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /bookings/{bookingId}/response:
     post:
       tags:
-      - Drivers
-      summary: Driver chấp nhận hoặc từ chối Booking
+        - Driver
+      summary: Driver phản hồi Booking
+      description: Driver chấp nhận hoặc từ chối Booking.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/BookingId'
+        - $ref: "#/components/parameters/BookingId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/BookingResponseRequest'
+              $ref: "#/components/schemas/BookingResponseRequest"
       responses:
-        '200':
-          description: Đã xử lý phản hồi
+        "200":
+          description: Phản hồi Booking thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Booking'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Booking"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # =========================================================
+  # TRIP
+  # =========================================================
+
   /trips:
     get:
       tags:
-      - Trips
-      summary: Xem lịch sử Trip của Customer
+        - Trip
+      summary: Xem lịch sử Trip
+      description: Customer hoặc Driver xem các Trip liên quan đến mình.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Trip
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TripListResponse'
+                $ref: "#/components/schemas/TripListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /trips/{tripId}:
     get:
       tags:
-      - Trips
-      summary: Xem chi tiết và theo dõi Trip
+        - Trip
+      summary: Xem chi tiết Trip
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/TripId'
+        - $ref: "#/components/parameters/TripId"
       responses:
-        '200':
+        "200":
           description: Chi tiết Trip
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Trip'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Trip"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /trips/{tripId}/status:
     put:
       tags:
-      - Trips
-      summary: Driver cập nhật trạng thái Trip
+        - Trip
+      summary: Cập nhật trạng thái Trip
+      description: Driver cập nhật trạng thái Trip trong quá trình thực hiện.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/TripId'
+        - $ref: "#/components/parameters/TripId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TripStatusRequest'
+              $ref: "#/components/schemas/TripStatusRequest"
       responses:
-        '200':
-          description: Cập nhật thành công
+        "200":
+          description: Cập nhật trạng thái thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Trip'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Trip"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
   /trips/{tripId}/complete:
     post:
       tags:
-      - Trips
+        - Trip
       summary: Hoàn thành Trip
+      description: Driver xác nhận Trip đã hoàn thành.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/TripId'
+        - $ref: "#/components/parameters/TripId"
       responses:
-        '200':
+        "200":
           description: Trip hoàn thành
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Trip'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Trip"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  # =========================================================
+  # VEHICLE
+  # =========================================================
+
   /drivers/me/vehicles:
     get:
       tags:
-      - Vehicles
+        - Vehicle
       summary: Xem Vehicle của Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       responses:
-        '200':
+        "200":
           description: Danh sách Vehicle
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Vehicle'
+                  $ref: "#/components/schemas/Vehicle"
+
     post:
       tags:
-      - Vehicles
-      summary: Thêm Vehicle của Driver
+        - Vehicle
+      summary: Thêm Vehicle
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VehicleRequest'
+              $ref: "#/components/schemas/VehicleRequest"
       responses:
-        '201':
-          description: Vehicle được tạo
+        "201":
+          description: Thêm Vehicle thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vehicle'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Vehicle"
+
   /drivers/me/vehicles/{vehicleId}:
     get:
       tags:
-      - Vehicles
-      summary: Xem Vehicle của Driver
+        - Vehicle
+      summary: Xem Vehicle
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/VehicleId'
+        - $ref: "#/components/parameters/VehicleId"
       responses:
-        '200':
-          description: Vehicle
+        "200":
+          description: Thông tin Vehicle
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vehicle'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Vehicle"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     put:
       tags:
-      - Vehicles
-      summary: Cập nhật Vehicle của Driver
+        - Vehicle
+      summary: Cập nhật Vehicle
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/VehicleId'
+        - $ref: "#/components/parameters/VehicleId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VehicleRequest'
+              $ref: "#/components/schemas/VehicleRequest"
       responses:
-        '200':
+        "200":
           description: Cập nhật thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vehicle'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Vehicle"
+
     delete:
       tags:
-      - Vehicles
-      summary: Xóa Vehicle của Driver
+        - Vehicle
+      summary: Xóa Vehicle
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/VehicleId'
+        - $ref: "#/components/parameters/VehicleId"
       responses:
-        '204':
-          description: Xóa thành công
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "204":
+          description: Xóa Vehicle thành công
+
+  # =========================================================
+  # PAYMENT
+  # =========================================================
+
   /payments:
     post:
       tags:
-      - Payments
+        - Payment
       summary: Tạo yêu cầu thanh toán
+      description: Tạo Payment sau khi Trip hoàn thành.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreatePaymentRequest'
+              $ref: "#/components/schemas/CreatePaymentRequest"
       responses:
-        '201':
-          description: Payment được tạo
+        "201":
+          description: Tạo Payment thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Payment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /payments/{paymentId}:
     get:
       tags:
-      - Payments
+        - Payment
       summary: Xem kết quả Payment
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/PaymentId'
+        - $ref: "#/components/parameters/PaymentId"
       responses:
-        '200':
-          description: Payment
+        "200":
+          description: Thông tin Payment
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Payment"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /payments/{paymentId}/retry:
     post:
       tags:
-      - Payments
-      summary: Thực hiện lại Payment
+        - Payment
+      summary: Thanh toán lại
+      description: Thực hiện lại Payment khi Payment thất bại và được phép retry.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/PaymentId'
+        - $ref: "#/components/parameters/PaymentId"
       responses:
-        '200':
-          description: Đã tạo lại yêu cầu thanh toán
+        "200":
+          description: Payment retry được tạo
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Payment'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Payment"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  # =========================================================
+  # RATING
+  # =========================================================
+
   /trips/{tripId}/rating:
     post:
       tags:
-      - Ratings
-      summary: Customer đánh giá Driver
+        - Rating
+      summary: Đánh giá Driver
+      description: Customer đánh giá Driver sau khi Trip hoàn thành.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/TripId'
+        - $ref: "#/components/parameters/TripId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateRatingRequest'
+              $ref: "#/components/schemas/CreateRatingRequest"
       responses:
-        '201':
-          description: Rating được tạo
+        "201":
+          description: Đánh giá thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Rating'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: "#/components/schemas/Rating"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /drivers/{driverId}/ratings:
     get:
       tags:
-      - Ratings
+        - Rating
       summary: Xem Rating của Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/DriverId'
+        - $ref: "#/components/parameters/DriverId"
       responses:
-        '200':
+        "200":
           description: Danh sách Rating
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RatingListResponse'
+                $ref: "#/components/schemas/RatingListResponse"
+
+  # =========================================================
+  # ADMIN - CUSTOMER
+  # =========================================================
+
   /admin/customers:
     get:
       tags:
-      - Admin
+        - Admin
       summary: Quản lý danh sách Customer
+      description: Admin xem danh sách Customer.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Customer
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CustomerListResponse'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+                $ref: "#/components/schemas/CustomerListResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /admin/customers/{customerId}:
     get:
       tags:
-      - Admin
+        - Admin
       summary: Xem Customer
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       responses:
-        '200':
-          description: Customer
+        "200":
+          description: Thông tin Customer
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Customer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     put:
       tags:
-      - Admin
+        - Admin
       summary: Cập nhật Customer
+      description: Admin cập nhật thông tin Customer theo quyền quản trị.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AdminUpdateCustomerRequest'
+              $ref: "#/components/schemas/AdminUpdateCustomerRequest"
       responses:
-        '200':
+        "200":
           description: Cập nhật Customer thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Customer'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Customer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     delete:
       tags:
-      - Admin
-      summary: Khóa hoặc xóa Customer theo chính sách hệ thống
+        - Admin
+      summary: Khóa hoặc xóa Customer
+      description: Thực hiện theo chính sách quản lý tài khoản của hệ thống.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/CustomerId'
+        - $ref: "#/components/parameters/CustomerId"
       responses:
-        '204':
+        "204":
           description: Thực hiện thành công
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  # =========================================================
+  # ADMIN - DRIVER
+  # =========================================================
+
   /admin/drivers:
     get:
       tags:
-      - Admin
+        - Admin
       summary: Quản lý danh sách Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Driver
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DriverListResponse'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+                $ref: "#/components/schemas/DriverListResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
   /admin/drivers/{driverId}:
     get:
       tags:
-      - Admin
+        - Admin
       summary: Xem Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/DriverId'
+        - $ref: "#/components/parameters/DriverId"
       responses:
-        '200':
-          description: Driver
+        "200":
+          description: Thông tin Driver
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Driver'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Driver"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
     put:
       tags:
-      - Admin
-      summary: Cập nhật thông tin Driver
+        - Admin
+      summary: Cập nhật Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/DriverId'
+        - $ref: "#/components/parameters/DriverId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AdminUpdateDriverRequest'
+              $ref: "#/components/schemas/AdminUpdateDriverRequest"
       responses:
-        '200':
+        "200":
           description: Cập nhật Driver thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Driver'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Driver"
+
     delete:
       tags:
-      - Admin
-      summary: Khóa hoặc xóa Driver theo chính sách hệ thống
+        - Admin
+      summary: Khóa hoặc xóa Driver
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/DriverId'
+        - $ref: "#/components/parameters/DriverId"
       responses:
-        '204':
+        "204":
           description: Thực hiện thành công
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+
+  # =========================================================
+  # ADMIN - VEHICLE
+  # =========================================================
+
   /admin/vehicles:
     get:
       tags:
-      - Admin
+        - Admin
       summary: Quản lý Vehicle
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Vehicle
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Vehicle'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+                  $ref: "#/components/schemas/Vehicle"
+
   /admin/vehicles/{vehicleId}:
-    get:
-      tags:
-      - Admin
-      summary: Xem Vehicle
-      security:
-      - bearerAuth: []
-      parameters:
-      - $ref: '#/components/parameters/VehicleId'
-      responses:
-        '200':
-          description: Vehicle
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Vehicle'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
     put:
       tags:
-      - Admin
+        - Admin
       summary: Cập nhật Vehicle
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/VehicleId'
+        - $ref: "#/components/parameters/VehicleId"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VehicleRequest'
+              $ref: "#/components/schemas/VehicleRequest"
       responses:
-        '200':
-          description: Cập nhật thành công
+        "200":
+          description: Cập nhật Vehicle thành công
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vehicle'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Vehicle"
+
     delete:
       tags:
-      - Admin
+        - Admin
       summary: Xóa Vehicle
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/VehicleId'
+        - $ref: "#/components/parameters/VehicleId"
       responses:
-        '204':
-          description: Xóa thành công
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+        "204":
+          description: Xóa Vehicle thành công
+
+  # =========================================================
+  # ADMIN - BOOKING / TRIP
+  # =========================================================
+
   /admin/bookings:
     get:
       tags:
-      - Admin
+        - Admin
       summary: Theo dõi Booking
+      description: Admin theo dõi các Booking trong hệ thống.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Booking
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BookingListResponse'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+                $ref: "#/components/schemas/BookingListResponse"
+
   /admin/trips:
     get:
       tags:
-      - Admin
+        - Admin
       summary: Theo dõi Trip
+      description: Admin theo dõi các Trip trong hệ thống.
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Limit'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Limit"
       responses:
-        '200':
+        "200":
           description: Danh sách Trip
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TripListResponse'
-        '403':
-          $ref: '#/components/responses/Forbidden'
+                $ref: "#/components/schemas/TripListResponse"
+
   /admin/trips/{tripId}:
     get:
       tags:
-      - Admin
-      summary: Xem chi tiết Trip để hỗ trợ xử lý
+        - Admin
+      summary: Xem chi tiết Trip
       security:
-      - bearerAuth: []
+        - bearerAuth: []
       parameters:
-      - $ref: '#/components/parameters/TripId'
+        - $ref: "#/components/parameters/TripId"
       responses:
-        '200':
+        "200":
           description: Chi tiết Trip
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Trip'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
+                $ref: "#/components/schemas/Trip"
+
+# ===========================================================
+# COMPONENTS
+# ===========================================================
+
 components:
+  # ---------------------------------------------------------
+  # SECURITY
+  # ---------------------------------------------------------
+
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+
+  # ---------------------------------------------------------
+  # PARAMETERS
+  # ---------------------------------------------------------
+
   parameters:
-    BookingId:
-      name: bookingId
-      in: path
-      required: true
-      schema:
-        type: string
     CustomerId:
       name: customerId
       in: path
       required: true
       schema:
         type: string
+
     DriverId:
       name: driverId
       in: path
       required: true
       schema:
         type: string
+
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema:
+        type: string
+
     TripId:
       name: tripId
       in: path
       required: true
       schema:
         type: string
+
     VehicleId:
       name: vehicleId
       in: path
       required: true
       schema:
         type: string
+
     PaymentId:
       name: paymentId
       in: path
       required: true
       schema:
         type: string
+
     Page:
       name: page
       in: query
+      required: false
       schema:
         type: integer
         minimum: 1
         default: 1
+
     Limit:
       name: limit
       in: query
+      required: false
       schema:
         type: integer
         minimum: 1
         maximum: 100
         default: 20
+
+  # ---------------------------------------------------------
+  # RESPONSES
+  # ---------------------------------------------------------
+
   responses:
     BadRequest:
       description: Dữ liệu không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
     Unauthorized:
       description: Chưa đăng nhập hoặc JWT không hợp lệ
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
     Forbidden:
-      description: Không có quyền thực hiện thao tác
+      description: Không có quyền thực hiện chức năng
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
     NotFound:
-      description: Không tìm thấy tài nguyên
+      description: Không tìm thấy dữ liệu
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  # ---------------------------------------------------------
+  # SCHEMAS
+  # ---------------------------------------------------------
+
   schemas:
     RegisterRequest:
       type: object
       required:
-      - username
-      - password
-      - fullname
+        - username
+        - password
+        - fullname
       properties:
         username:
           type: string
+          example: customer01
         password:
           type: string
           format: password
+          example: Password123
         fullname:
           type: string
+          example: Nguyen Van A
+
     LoginRequest:
       type: object
       required:
-      - username
-      - password
+        - username
+        - password
       properties:
         username:
           type: string
+          example: customer01
         password:
           type: string
           format: password
+          example: Password123
+
     LoginResponse:
       type: object
       properties:
         accessToken:
           type: string
-        tokenType:
-          type: string
-          example: Bearer
+          example: eyJhbGciOiJIUzI1NiIs...
         user:
-          $ref: '#/components/schemas/UserSummary'
+          $ref: "#/components/schemas/UserSummary"
+
     UserSummary:
       type: object
       properties:
-        id:
+        userId:
           type: string
         username:
           type: string
         fullname:
           type: string
         role:
-          $ref: '#/components/schemas/UserRole'
+          $ref: "#/components/schemas/UserRole"
+
     Customer:
       type: object
       properties:
-        id:
+        customerId:
           type: string
         username:
           type: string
         fullname:
           type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
         status:
-          $ref: '#/components/schemas/AccountStatus'
+          type: string
+          enum:
+            - ACTIVE
+            - BLOCKED
+
     UpdateCustomerRequest:
       type: object
       properties:
         fullname:
           type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+
     AdminUpdateCustomerRequest:
       type: object
       properties:
         fullname:
           type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
         status:
-          $ref: '#/components/schemas/AccountStatus'
+          type: string
+          enum:
+            - ACTIVE
+            - BLOCKED
+
     Driver:
       type: object
       properties:
-        id:
+        driverId:
           type: string
         username:
           type: string
         fullname:
           type: string
+        phone:
+          type: string
         status:
-          $ref: '#/components/schemas/DriverStatus'
+          type: string
+          enum:
+            - ACTIVE
+            - BLOCKED
+        availability:
+          $ref: "#/components/schemas/DriverStatus"
         location:
-          $ref: '#/components/schemas/Location'
+          $ref: "#/components/schemas/Location"
+
     UpdateDriverRequest:
       type: object
       properties:
         fullname:
           type: string
+        phone:
+          type: string
+
     AdminUpdateDriverRequest:
       type: object
       properties:
         fullname:
           type: string
+        phone:
+          type: string
         status:
-          $ref: '#/components/schemas/DriverStatus'
-    AccountStatus:
-      type: string
-      enum:
-      - ACTIVE
-      - INACTIVE
-      - BLOCKED
+          type: string
+          enum:
+            - ACTIVE
+            - BLOCKED
+
     DriverStatusRequest:
       type: object
       required:
-      - status
+        - status
       properties:
         status:
-          $ref: '#/components/schemas/DriverStatus'
+          $ref: "#/components/schemas/DriverStatus"
+
     DriverStatus:
       type: string
       enum:
-      - AVAILABLE
-      - BUSY
-      - OFFLINE
+        - AVAILABLE
+        - BUSY
+        - OFFLINE
+
     Location:
       type: object
       required:
-      - latitude
-      - longitude
+        - latitude
+        - longitude
       properties:
         latitude:
           type: number
           format: double
+          example: 10.7769
         longitude:
           type: number
           format: double
+          example: 106.7009
+
     Booking:
       type: object
       properties:
-        id:
+        bookingId:
           type: string
         customerId:
           type: string
@@ -1120,162 +1324,192 @@ components:
           type: string
           nullable: true
         pickupLocation:
-          $ref: '#/components/schemas/Location'
+          $ref: "#/components/schemas/Location"
         destinationLocation:
-          $ref: '#/components/schemas/Location'
+          $ref: "#/components/schemas/Location"
         vehicleType:
-          $ref: '#/components/schemas/VehicleType'
+          $ref: "#/components/schemas/VehicleType"
         status:
-          $ref: '#/components/schemas/BookingStatus'
+          $ref: "#/components/schemas/BookingStatus"
+        createdAt:
+          type: string
+          format: date-time
+
     CreateBookingRequest:
       type: object
       required:
-      - pickupLocation
-      - destinationLocation
-      - vehicleType
+        - pickupLocation
+        - destinationLocation
+        - vehicleType
       properties:
         pickupLocation:
-          $ref: '#/components/schemas/Location'
+          $ref: "#/components/schemas/Location"
         destinationLocation:
-          $ref: '#/components/schemas/Location'
+          $ref: "#/components/schemas/Location"
         vehicleType:
-          $ref: '#/components/schemas/VehicleType'
+          $ref: "#/components/schemas/VehicleType"
+
     BookingResponseRequest:
       type: object
       required:
-      - response
+        - response
       properties:
         response:
           type: string
           enum:
-          - ACCEPT
-          - REJECT
+            - ACCEPT
+            - REJECT
+
     BookingStatusResponse:
       type: object
       properties:
         bookingId:
           type: string
         status:
-          $ref: '#/components/schemas/BookingStatus'
+          $ref: "#/components/schemas/BookingStatus"
+
     BookingStatus:
       type: string
       enum:
-      - SEARCHING_DRIVER
-      - SENT_TO_DRIVER
-      - ACCEPTED
-      - CANCELLED
-      - COMPLETED
+        - SEARCHING_DRIVER
+        - SENT_TO_DRIVER
+        - ACCEPTED
+        - CANCELLED
+        - COMPLETED
+
     DriverMatchResponse:
       type: object
       properties:
         bookingId:
           type: string
-        driverId:
-          type: string
-          nullable: true
-        status:
-          type: string
-          enum:
-          - DRIVER_FOUND
-          - NO_DRIVER_FOUND
-          - SEARCHING
+        driver:
+          $ref: "#/components/schemas/Driver"
+        matched:
+          type: boolean
+
     BookingListResponse:
       type: object
       properties:
-        items:
+        data:
           type: array
           items:
-            $ref: '#/components/schemas/Booking'
+            $ref: "#/components/schemas/Booking"
         page:
           type: integer
         limit:
           type: integer
         total:
           type: integer
+
     Trip:
       type: object
       properties:
-        id:
+        tripId:
           type: string
         bookingId:
+          type: string
+        customerId:
           type: string
         driverId:
           type: string
         status:
-          $ref: '#/components/schemas/TripStatus'
+          $ref: "#/components/schemas/TripStatus"
+        startedAt:
+          type: string
+          format: date-time
+          nullable: true
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+
     TripStatusRequest:
       type: object
       required:
-      - status
+        - status
       properties:
         status:
-          $ref: '#/components/schemas/TripStatus'
+          $ref: "#/components/schemas/TripStatus"
+
     TripStatus:
       type: string
       enum:
-      - CREATED
-      - IN_PROGRESS
-      - COMPLETED
+        - CREATED
+        - IN_PROGRESS
+        - COMPLETED
+
     TripListResponse:
       type: object
       properties:
-        items:
+        data:
           type: array
           items:
-            $ref: '#/components/schemas/Trip'
+            $ref: "#/components/schemas/Trip"
         page:
           type: integer
         limit:
           type: integer
         total:
           type: integer
+
     Vehicle:
       type: object
       properties:
-        id:
+        vehicleId:
           type: string
         driverId:
           type: string
-        plateNumber:
+        licensePlate:
           type: string
         vehicleType:
-          $ref: '#/components/schemas/VehicleType'
+          $ref: "#/components/schemas/VehicleType"
+        brand:
+          type: string
+        model:
+          type: string
         status:
           type: string
           enum:
-          - ACTIVE
-          - INACTIVE
+            - ACTIVE
+            - INACTIVE
+
     VehicleRequest:
       type: object
       required:
-      - plateNumber
-      - vehicleType
+        - licensePlate
+        - vehicleType
       properties:
-        plateNumber:
+        licensePlate:
           type: string
         vehicleType:
-          $ref: '#/components/schemas/VehicleType'
+          $ref: "#/components/schemas/VehicleType"
+        brand:
+          type: string
+        model:
+          type: string
+
     VehicleType:
       type: string
       enum:
-      - MOTORBIKE
-      - CAR
-      - SUV
-      - VAN
+        - MOTORBIKE
+        - CAR_4_SEATS
+        - CAR_7_SEATS
+
     CreatePaymentRequest:
       type: object
       required:
-      - tripId
-      - method
+        - tripId
+        - method
       properties:
         tripId:
           type: string
         method:
-          $ref: '#/components/schemas/PaymentMethod'
+          $ref: "#/components/schemas/PaymentMethod"
+
     Payment:
       type: object
       properties:
-        id:
+        paymentId:
           type: string
         tripId:
           type: string
@@ -1283,25 +1517,31 @@ components:
           type: number
           format: double
         method:
-          $ref: '#/components/schemas/PaymentMethod'
+          $ref: "#/components/schemas/PaymentMethod"
         status:
-          $ref: '#/components/schemas/PaymentStatus'
+          $ref: "#/components/schemas/PaymentStatus"
+        transactionId:
+          type: string
+          nullable: true
+
     PaymentMethod:
       type: string
       enum:
-      - CASH
-      - ELECTRONIC
+        - CASH
+        - ELECTRONIC
+
     PaymentStatus:
       type: string
       enum:
-      - PENDING
-      - PROCESSING
-      - SUCCESS
-      - FAILED
+        - PENDING
+        - PROCESSING
+        - SUCCESS
+        - FAILED
+
     CreateRatingRequest:
       type: object
       required:
-      - score
+        - score
       properties:
         score:
           type: integer
@@ -1309,57 +1549,77 @@ components:
           maximum: 5
         comment:
           type: string
+
     Rating:
       type: object
       properties:
-        id:
+        ratingId:
           type: string
         tripId:
+          type: string
+        customerId:
           type: string
         driverId:
           type: string
         score:
           type: integer
+          minimum: 1
+          maximum: 5
         comment:
           type: string
+          nullable: true
+
     RatingListResponse:
       type: object
       properties:
-        items:
+        data:
           type: array
           items:
-            $ref: '#/components/schemas/Rating'
+            $ref: "#/components/schemas/Rating"
         total:
           type: integer
+
     UserRole:
       type: string
       enum:
-      - CUSTOMER
-      - DRIVER
-      - ADMIN
+        - CUSTOMER
+        - DRIVER
+        - ADMIN
+
     CustomerListResponse:
       type: object
       properties:
-        items:
+        data:
           type: array
           items:
-            $ref: '#/components/schemas/Customer'
+            $ref: "#/components/schemas/Customer"
         page:
           type: integer
         limit:
           type: integer
         total:
           type: integer
+
     DriverListResponse:
       type: object
       properties:
-        items:
+        data:
           type: array
           items:
-            $ref: '#/components/schemas/Driver'
+            $ref: "#/components/schemas/Driver"
         page:
           type: integer
         limit:
           type: integer
         total:
           type: integer
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: BAD_REQUEST
+        message:
+          type: string
+          example: Dữ liệu không hợp lệ
