@@ -1,0 +1,1010 @@
+openapi: 3.0.0
+
+info:
+  title: CABSystem API
+  description: |
+    This API provides services for CABSystem, an online vehicle booking system.
+
+    ### Key Features:
+    - **Authentication**: Customer, Driver, and Admin authentication.
+    - **Booking Management**: Create, view, and cancel vehicle bookings.
+    - **Driver Matching**: Find and assign suitable drivers to bookings.
+    - **Trip Management**: Manage and track trips.
+    - **Vehicle Management**: Manage driver vehicles.
+    - **Payment**: Process and manage trip payments.
+    - **Rating**: Allow customers to rate drivers.
+    - **Administration**: Manage customers, drivers, vehicles, bookings, and trips.
+
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local server
+
+tags:
+  - name: Authentication
+    description: Authentication and account access
+
+  - name: Bookings
+    description: Booking management
+
+  - name: Drivers
+    description: Driver management and booking acceptance
+
+  - name: Trips
+    description: Trip management and tracking
+
+  - name: Vehicles
+    description: Vehicle management
+
+  - name: Payments
+    description: Payment management
+
+  - name: Ratings
+    description: Driver rating management
+
+  - name: Admin
+    description: Administrative management
+
+paths:
+  # =========================
+  # Authentication
+  # =========================
+
+  /auth/register:
+    post:
+      summary: Register a new customer
+      operationId: registerCustomer
+      tags:
+        - Authentication
+
+      requestBody:
+        description: Customer registration information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+
+      responses:
+        "201":
+          description: Customer registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+        "400":
+          description: Invalid registration information
+
+        "409":
+          description: Account already exists
+
+  /auth/login:
+    post:
+      summary: Login to the system
+      operationId: login
+      tags:
+        - Authentication
+
+      requestBody:
+        description: Login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+
+        "401":
+          description: Invalid username or password
+
+  # =========================
+  # Bookings
+  # =========================
+
+  /bookings:
+    post:
+      summary: Create a new booking
+      operationId: createBooking
+      tags:
+        - Bookings
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        description: Booking information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingRequest"
+
+      responses:
+        "201":
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+        "400":
+          description: Invalid booking information
+
+        "401":
+          description: Unauthorized
+
+    get:
+      summary: Get customer booking history
+      operationId: getBookings
+      tags:
+        - Bookings
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        "200":
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+
+        "401":
+          description: Unauthorized
+
+  /bookings/{bookingId}:
+    get:
+      summary: Get booking by ID
+      operationId: getBookingById
+      tags:
+        - Bookings
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          description: ID of the booking
+          schema:
+            type: integer
+            format: int64
+
+      responses:
+        "200":
+          description: Booking found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+        "404":
+          description: Booking not found
+
+        "401":
+          description: Unauthorized
+
+    delete:
+      summary: Cancel a booking
+      operationId: cancelBooking
+      tags:
+        - Bookings
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          description: ID of the booking to cancel
+          schema:
+            type: integer
+            format: int64
+
+      responses:
+        "200":
+          description: Booking cancelled successfully
+
+        "400":
+          description: Booking cannot be cancelled
+
+        "404":
+          description: Booking not found
+
+        "401":
+          description: Unauthorized
+
+  # =========================
+  # Drivers
+  # =========================
+
+  /drivers:
+    get:
+      summary: Get list of drivers
+      operationId: getDrivers
+      tags:
+        - Drivers
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        "200":
+          description: List of drivers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Driver"
+
+        "401":
+          description: Unauthorized
+
+  /drivers/{driverId}:
+    get:
+      summary: Get driver by ID
+      operationId: getDriverById
+      tags:
+        - Drivers
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          description: ID of the driver
+          schema:
+            type: integer
+            format: int64
+
+      responses:
+        "200":
+          description: Driver found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Driver"
+
+        "404":
+          description: Driver not found
+
+  /bookings/{bookingId}/response:
+    post:
+      summary: Accept or reject a booking
+      operationId: respondToBooking
+      tags:
+        - Drivers
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          description: ID of the booking
+          schema:
+            type: integer
+            format: int64
+
+      requestBody:
+        description: Driver response to booking
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingResponseRequest"
+
+      responses:
+        "200":
+          description: Booking response processed successfully
+
+        "400":
+          description: Invalid booking response
+
+        "401":
+          description: Unauthorized
+
+  # =========================
+  # Trips
+  # =========================
+
+  /trips:
+    get:
+      summary: Get trip history
+      operationId: getTrips
+      tags:
+        - Trips
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        "200":
+          description: List of trips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Trip"
+
+        "401":
+          description: Unauthorized
+
+  /trips/{tripId}:
+    get:
+      summary: Get trip by ID
+      operationId: getTripById
+      tags:
+        - Trips
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          description: ID of the trip
+          schema:
+            type: integer
+            format: int64
+
+      responses:
+        "200":
+          description: Trip found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+
+        "404":
+          description: Trip not found
+
+    put:
+      summary: Update trip status
+      operationId: updateTripStatus
+      tags:
+        - Trips
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: tripId
+          in: path
+          required: true
+          description: ID of the trip
+          schema:
+            type: integer
+            format: int64
+
+      requestBody:
+        description: New trip status
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TripStatusRequest"
+
+      responses:
+        "200":
+          description: Trip status updated successfully
+
+        "400":
+          description: Invalid trip status
+
+        "404":
+          description: Trip not found
+
+  # =========================
+  # Vehicles
+  # =========================
+
+  /vehicles:
+    get:
+      summary: Get list of vehicles
+      operationId: getVehicles
+      tags:
+        - Vehicles
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        "200":
+          description: List of vehicles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Vehicle"
+
+    post:
+      summary: Create a vehicle
+      operationId: createVehicle
+      tags:
+        - Vehicles
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        description: Vehicle information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Vehicle"
+
+      responses:
+        "201":
+          description: Vehicle created successfully
+
+        "400":
+          description: Invalid vehicle information
+
+  /vehicles/{vehicleId}:
+    put:
+      summary: Update vehicle
+      operationId: updateVehicle
+      tags:
+        - Vehicles
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          description: ID of the vehicle
+          schema:
+            type: integer
+            format: int64
+
+      requestBody:
+        description: Updated vehicle information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Vehicle"
+
+      responses:
+        "200":
+          description: Vehicle updated successfully
+
+        "404":
+          description: Vehicle not found
+
+    delete:
+      summary: Delete vehicle
+      operationId: deleteVehicle
+      tags:
+        - Vehicles
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          description: ID of the vehicle
+          schema:
+            type: integer
+            format: int64
+
+      responses:
+        "204":
+          description: Vehicle deleted successfully
+
+        "404":
+          description: Vehicle not found
+
+  # =========================
+  # Payments
+  # =========================
+
+  /payments:
+    post:
+      summary: Create a payment
+      operationId: createPayment
+      tags:
+        - Payments
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        description: Payment information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePaymentRequest"
+
+      responses:
+        "201":
+          description: Payment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+        "400":
+          description: Invalid payment information
+
+        "401":
+          description: Unauthorized
+
+  /payments/{paymentId}:
+    get:
+      summary: Get payment result
+      operationId: getPayment
+      tags:
+        - Payments
+
+      security:
+        - bearerAuth: []
+
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          description: ID of the payment
+          schema:
+            type: integer
+            format: int64
+
+      responses:
+        "200":
+          description: Payment result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+        "404":
+          description: Payment not found
+
+  # =========================
+  # Ratings
+  # =========================
+
+  /ratings:
+    post:
+      summary: Rate a driver
+      operationId: createRating
+      tags:
+        - Ratings
+
+      security:
+        - bearerAuth: []
+
+      requestBody:
+        description: Driver rating information
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRatingRequest"
+
+      responses:
+        "201":
+          description: Rating created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Rating"
+
+        "400":
+          description: Invalid rating
+
+        "401":
+          description: Unauthorized
+
+  /drivers/{driverId}/ratings:
+    get:
+      summary: Get driver ratings
+      operationId: getDriverRatings
+      tags:
+        - Ratings
+
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          description: ID of the driver
+          schema:
+            type: integer
+            format: int64
+
+      responses:
+        "200":
+          description: Driver ratings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Rating"
+
+  # =========================
+  # Admin
+  # =========================
+
+  /admin/customers:
+    get:
+      summary: Get list of customers
+      operationId: getCustomers
+      tags:
+        - Admin
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        "200":
+          description: List of customers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Customer"
+
+        "401":
+          description: Unauthorized
+
+        "403":
+          description: Forbidden
+
+  /admin/drivers:
+    get:
+      summary: Get list of drivers for administration
+      operationId: getAdminDrivers
+      tags:
+        - Admin
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        "200":
+          description: List of drivers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Driver"
+
+        "401":
+          description: Unauthorized
+
+        "403":
+          description: Forbidden
+
+  /admin/bookings:
+    get:
+      summary: Monitor bookings and trips
+      operationId: monitorBookings
+      tags:
+        - Admin
+
+      security:
+        - bearerAuth: []
+
+      responses:
+        "200":
+          description: Booking monitoring information
+
+        "401":
+          description: Unauthorized
+
+        "403":
+          description: Forbidden
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+        fullname:
+          type: string
+
+      required:
+        - username
+        - password
+        - fullname
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+
+    Customer:
+      type: object
+      properties:
+        customerId:
+          type: integer
+          format: int64
+        username:
+          type: string
+        fullname:
+          type: string
+
+      required:
+        - customerId
+        - username
+        - fullname
+
+    Driver:
+      type: object
+      properties:
+        driverId:
+          type: integer
+          format: int64
+        username:
+          type: string
+        fullname:
+          type: string
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - INACTIVE
+            - BUSY
+
+      required:
+        - driverId
+        - username
+        - fullname
+        - status
+
+    Vehicle:
+      type: object
+      properties:
+        vehicleId:
+          type: integer
+          format: int64
+        licensePlate:
+          type: string
+        vehicleType:
+          type: string
+        status:
+          type: string
+
+      required:
+        - vehicleId
+        - licensePlate
+        - vehicleType
+
+    Booking:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+          format: int64
+        pickupLocation:
+          type: string
+        dropoffLocation:
+          type: string
+        vehicleType:
+          type: string
+        status:
+          type: string
+          enum:
+            - SEARCHING_DRIVER
+            - SENT_TO_DRIVER
+            - ACCEPTED
+            - CANCELLED
+
+      required:
+        - bookingId
+        - pickupLocation
+        - dropoffLocation
+        - status
+
+    CreateBookingRequest:
+      type: object
+      properties:
+        pickupLocation:
+          type: string
+        dropoffLocation:
+          type: string
+        vehicleType:
+          type: string
+
+      required:
+        - pickupLocation
+        - dropoffLocation
+        - vehicleType
+
+    BookingResponseRequest:
+      type: object
+      properties:
+        response:
+          type: string
+          enum:
+            - ACCEPT
+            - REJECT
+
+      required:
+        - response
+
+    Trip:
+      type: object
+      properties:
+        tripId:
+          type: integer
+          format: int64
+        bookingId:
+          type: integer
+          format: int64
+        driverId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum:
+            - CREATED
+            - IN_PROGRESS
+            - COMPLETED
+
+      required:
+        - tripId
+        - bookingId
+        - driverId
+        - status
+
+    TripStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - IN_PROGRESS
+            - COMPLETED
+
+      required:
+        - status
+
+    CreatePaymentRequest:
+      type: object
+      properties:
+        tripId:
+          type: integer
+          format: int64
+        paymentMethod:
+          type: string
+          enum:
+            - CASH
+            - ELECTRONIC
+
+      required:
+        - tripId
+        - paymentMethod
+
+    Payment:
+      type: object
+      properties:
+        paymentId:
+          type: integer
+          format: int64
+        tripId:
+          type: integer
+          format: int64
+        amount:
+          type: number
+          format: double
+        paymentMethod:
+          type: string
+          enum:
+            - CASH
+            - ELECTRONIC
+        status:
+          type: string
+          enum:
+            - PENDING
+            - PROCESSING
+            - SUCCESS
+            - FAILED
+
+      required:
+        - paymentId
+        - tripId
+        - amount
+        - paymentMethod
+        - status
+
+    CreateRatingRequest:
+      type: object
+      properties:
+        tripId:
+          type: integer
+          format: int64
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+
+      required:
+        - tripId
+        - rating
+
+    Rating:
+      type: object
+      properties:
+        ratingId:
+          type: integer
+          format: int64
+        tripId:
+          type: integer
+          format: int64
+        driverId:
+          type: integer
+          format: int64
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+
+      required:
+        - ratingId
+        - tripId
+        - driverId
+        - rating
