@@ -211,10 +211,10 @@ Các sơ đồ được lưu trong:
 
 bao gồm:
 
-- `use-case/`
-- `activity/`
-- `sequence/`
-- `domain/`
+- `use-case`
+- `activity`
+- `sequence`
+- `domain`
 
 ### API
 
