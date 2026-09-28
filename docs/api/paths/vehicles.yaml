@@ -1,0 +1,51 @@
+myVehicles:
+  get:
+    tags: [Vehicle]
+    summary: Xem danh sách Vehicle của Driver
+    description: "FR-18, UC-15. Roles: DRIVER"
+    operationId: listMyVehicles
+    x-roles: [DRIVER]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '../components/schemas.yaml#/Vehicle' } } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+  post:
+    tags: [Vehicle]
+    summary: Thêm Vehicle
+    description: "FR-18, UC-15. Roles: DRIVER"
+    operationId: createMyVehicle
+    x-roles: [DRIVER]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/VehicleInput' } } } }
+    responses:
+      '201': { description: Đã tạo, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Vehicle' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '409': { $ref: '../components/responses.yaml#/Conflict' }
+myVehicleById:
+  put:
+    tags: [Vehicle]
+    summary: Cập nhật Vehicle
+    description: "FR-18, UC-15. Roles: DRIVER (chủ sở hữu)"
+    operationId: updateMyVehicle
+    x-roles: [DRIVER]
+    parameters: [ { $ref: '../components/parameters.yaml#/VehicleId' } ]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/VehicleInput' } } } }
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Vehicle' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+  delete:
+    tags: [Vehicle]
+    summary: Xóa (vô hiệu hóa) Vehicle
+    description: "FR-18, UC-15. Roles: DRIVER (chủ sở hữu)"
+    operationId: deleteMyVehicle
+    x-roles: [DRIVER]
+    parameters: [ { $ref: '../components/parameters.yaml#/VehicleId' } ]
+    responses:
+      '204': { description: Đã xóa }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }

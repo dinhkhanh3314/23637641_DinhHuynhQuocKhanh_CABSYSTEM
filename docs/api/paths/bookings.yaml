@@ -1,0 +1,53 @@
+bookings:
+  post:
+    tags: [Booking]
+    summary: Tạo Booking
+    description: "FR-04, UC-04, BRL-04. Roles: CUSTOMER. Sau khi tạo, hệ thống tự động tìm Driver (UC-08, xử lý nội bộ). Booking ở trạng thái PENDING_DRIVER."
+    operationId: createBooking
+    x-roles: [CUSTOMER]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/BookingCreate' } } } }
+    responses:
+      '201': { description: Booking được tạo, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Booking' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+  get:
+    tags: [Booking]
+    summary: Xem lịch sử Booking
+    description: "FR-07, UC-07. Roles: CUSTOMER"
+    operationId: listMyBookings
+    x-roles: [CUSTOMER]
+    parameters:
+      - { $ref: '../components/parameters.yaml#/Page' }
+      - { $ref: '../components/parameters.yaml#/Size' }
+      - { name: status, in: query, schema: { $ref: '../components/schemas.yaml#/BookingStatus' } }
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/BookingList' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+bookingById:
+  get:
+    tags: [Booking]
+    summary: Xem trạng thái Booking
+    description: "FR-05, UC-05. Roles: CUSTOMER (chủ sở hữu)"
+    operationId: getBooking
+    x-roles: [CUSTOMER]
+    parameters: [ { $ref: '../components/parameters.yaml#/BookingId' } ]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Booking' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+cancel:
+  post:
+    tags: [Booking]
+    summary: Hủy Booking
+    description: "FR-06, UC-06, BRL-05. Roles: CUSTOMER. Chỉ hủy được khi Booking ở trạng thái cho phép (PENDING_DRIVER, SENT_TO_DRIVER)."
+    operationId: cancelBooking
+    x-roles: [CUSTOMER]
+    parameters: [ { $ref: '../components/parameters.yaml#/BookingId' } ]
+    responses:
+      '200': { description: Hủy thành công, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Booking' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { description: BOOKING_NOT_CANCELLABLE, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }

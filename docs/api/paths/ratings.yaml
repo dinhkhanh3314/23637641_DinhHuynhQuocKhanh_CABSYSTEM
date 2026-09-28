@@ -1,0 +1,28 @@
+rating:
+  post:
+    tags: [Rating]
+    summary: Đánh giá Driver
+    description: "FR-24, UC-19, BRL-21, BRL-22. Roles: CUSTOMER. Chỉ khi Trip COMPLETED và chưa có Rating."
+    operationId: createRating
+    x-roles: [CUSTOMER]
+    parameters: [ { $ref: '../components/parameters.yaml#/TripId' } ]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/RatingCreate' } } } }
+    responses:
+      '201': { description: Đã lưu, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Rating' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { description: TRIP_NOT_COMPLETED / RATING_ALREADY_EXISTS, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }
+  get:
+    tags: [Rating]
+    summary: Xem Rating của Trip
+    description: "FR-25, UC-19. Roles: CUSTOMER, DRIVER, ADMIN"
+    operationId: getRating
+    x-roles: [CUSTOMER, DRIVER, ADMIN]
+    parameters: [ { $ref: '../components/parameters.yaml#/TripId' } ]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Rating' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }

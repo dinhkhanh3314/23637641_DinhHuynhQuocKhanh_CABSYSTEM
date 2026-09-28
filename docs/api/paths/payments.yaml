@@ -1,0 +1,56 @@
+tripPayment:
+  get:
+    tags: [Payment]
+    summary: Xem Payment của Trip
+    description: "FR-20, FR-23, UC-18. Roles: CUSTOMER"
+    operationId: getTripPayment
+    x-roles: [CUSTOMER]
+    parameters: [ { $ref: '../components/parameters.yaml#/TripId' } ]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Payment' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+paymentById:
+  get:
+    tags: [Payment]
+    summary: Xem kết quả Payment
+    description: "FR-23, UC-18. Roles: CUSTOMER"
+    operationId: getPayment
+    x-roles: [CUSTOMER]
+    parameters: [ { $ref: '../components/parameters.yaml#/PaymentId' } ]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Payment' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+pay:
+  post:
+    tags: [Payment]
+    summary: Thực hiện thanh toán
+    description: "FR-21, UC-17, BRL-17, BRL-18, BRL-19, BRL-20. Roles: CUSTOMER. CASH ghi nhận hình thức thanh toán; ONLINE gửi yêu cầu đến Payment Provider và trả redirectUrl. Không lưu thông tin thẻ. Thất bại có thể gọi lại theo chính sách."
+    operationId: payTrip
+    x-roles: [CUSTOMER]
+    parameters: [ { $ref: '../components/parameters.yaml#/PaymentId' } ]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/PayRequest' } } } }
+    responses:
+      '200': { description: Đã ghi nhận / đang xử lý, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/PayResponse' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { description: TRIP_NOT_COMPLETED / PAYMENT_ALREADY_SUCCESS, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }
+      '502': { description: PAYMENT_PROVIDER_ERROR (NFR-10), content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }
+webhook:
+  post:
+    tags: [Webhook]
+    summary: Payment Provider gửi kết quả thanh toán
+    description: "FR-22, NFR-10, NFR-13. Xác thực bằng chữ ký X-Signature. Xử lý idempotent theo transactionId. Thất bại không làm đổi trạng thái Trip."
+    operationId: paymentWebhook
+    security: [ { webhookSignature: [] } ]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/PaymentWebhook' } } } }
+    responses:
+      '200': { description: Đã tiếp nhận }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }

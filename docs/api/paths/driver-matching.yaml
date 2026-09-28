@@ -1,0 +1,54 @@
+status:
+  put:
+    tags: [DriverMatching]
+    summary: Cập nhật trạng thái hoạt động và vị trí Driver
+    description: "Phục vụ FR-08 (BRL-07, BRL-11). Roles: DRIVER"
+    operationId: updateDriverStatus
+    x-roles: [DRIVER]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/DriverStatusUpdate' } } } }
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Driver' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+offers:
+  get:
+    tags: [DriverMatching]
+    summary: Xem Booking được gửi đến Driver
+    description: "FR-09, UC-08/UC-09. Roles: DRIVER. Matching (UC-08, UC-10) là xử lý nội bộ; Driver nhận offer qua danh sách này hoặc push notification."
+    operationId: listMyOffers
+    x-roles: [DRIVER]
+    parameters: [ { name: status, in: query, schema: { $ref: '../components/schemas.yaml#/OfferStatus' } } ]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { type: array, items: { $ref: '../components/schemas.yaml#/BookingOffer' } } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+accept:
+  post:
+    tags: [DriverMatching]
+    summary: Driver chấp nhận Booking
+    description: "FR-10, FR-13, UC-09, BRL-09, BRL-14. Roles: DRIVER. Thành công thì hệ thống tạo Trip và chuyển Booking sang ACCEPTED."
+    operationId: acceptOffer
+    x-roles: [DRIVER]
+    parameters: [ { $ref: '../components/parameters.yaml#/OfferId' } ]
+    responses:
+      '200': { description: Đã chấp nhận và Trip được tạo, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Trip' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { description: OFFER_EXPIRED / OFFER_ALREADY_RESPONDED / Booking đã hủy, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }
+reject:
+  post:
+    tags: [DriverMatching]
+    summary: Driver từ chối Booking
+    description: "FR-10, FR-11, UC-09, UC-10, BRL-06, BRL-13. Roles: DRIVER. Hệ thống tự động tìm Driver thay thế, không gửi lại cho Driver đã từ chối. Nếu hết Driver, Booking chuyển NO_DRIVER_FOUND và Customer được thông báo (FR-12, BRL-12)."
+    operationId: rejectOffer
+    x-roles: [DRIVER]
+    parameters: [ { $ref: '../components/parameters.yaml#/OfferId' } ]
+    requestBody: { content: { application/json: { schema: { $ref: '../components/schemas.yaml#/RejectRequest' } } } }
+    responses:
+      '204': { description: Đã từ chối }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { $ref: '../components/responses.yaml#/Conflict' }

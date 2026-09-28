@@ -1,0 +1,57 @@
+trips:
+  get:
+    tags: [Trip]
+    summary: Xem lịch sử Trip
+    description: "FR-17, UC-14. Roles: CUSTOMER (Trip của mình), DRIVER (Trip được phân công)"
+    operationId: listMyTrips
+    x-roles: [CUSTOMER, DRIVER]
+    parameters:
+      - { $ref: '../components/parameters.yaml#/Page' }
+      - { $ref: '../components/parameters.yaml#/Size' }
+      - { name: status, in: query, schema: { $ref: '../components/schemas.yaml#/TripStatus' } }
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/TripList' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+tripById:
+  get:
+    tags: [Trip]
+    summary: Theo dõi Trip
+    description: "FR-15, UC-11. Roles: CUSTOMER, DRIVER (liên quan đến Trip)"
+    operationId: getTrip
+    x-roles: [CUSTOMER, DRIVER]
+    parameters: [ { $ref: '../components/parameters.yaml#/TripId' } ]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Trip' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+status:
+  patch:
+    tags: [Trip]
+    summary: Cập nhật trạng thái Trip
+    description: "FR-14, UC-12, BRL-15. Roles: DRIVER. Chỉ cho phép CREATED -> IN_PROGRESS. Hoàn thành dùng endpoint /complete."
+    operationId: updateTripStatus
+    x-roles: [DRIVER]
+    parameters: [ { $ref: '../components/parameters.yaml#/TripId' } ]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/TripStatusUpdate' } } } }
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Trip' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { description: TRIP_INVALID_TRANSITION, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }
+complete:
+  post:
+    tags: [Trip]
+    summary: Hoàn thành Trip
+    description: "FR-16, FR-20, UC-13, BRL-16. Roles: DRIVER. Chỉ khi Trip đang IN_PROGRESS. Hệ thống tự tạo Payment (PENDING)."
+    operationId: completeTrip
+    x-roles: [DRIVER]
+    parameters: [ { $ref: '../components/parameters.yaml#/TripId' } ]
+    responses:
+      '200': { description: Trip hoàn thành, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Trip' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { $ref: '../components/responses.yaml#/Forbidden' }
+      '404': { $ref: '../components/responses.yaml#/NotFound' }
+      '409': { description: TRIP_NOT_IN_PROGRESS, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }

@@ -1,0 +1,47 @@
+register:
+  post:
+    tags: [Auth]
+    summary: Đăng ký tài khoản Customer
+    description: "FR-01, UC-01, BRL-01. Roles: public"
+    operationId: register
+    security: []
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/RegisterRequest' } } } }
+    responses:
+      '201': { description: Tạo tài khoản thành công, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/User' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '409': { description: Tài khoản đã tồn tại (ACCOUNT_ALREADY_EXISTS), content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }
+login:
+  post:
+    tags: [Auth]
+    summary: Đăng nhập
+    description: "FR-02, UC-02, BRL-02. Roles: public (Customer, Driver, Admin)"
+    operationId: login
+    security: []
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/LoginRequest' } } } }
+    responses:
+      '200': { description: Đăng nhập thành công, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/AuthToken' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '403': { description: Tài khoản không được phép truy cập (ACCOUNT_LOCKED), content: { application/json: { schema: { $ref: '../components/schemas.yaml#/Error' } } } }
+me:
+  get:
+    tags: [Auth]
+    summary: Xem thông tin cá nhân
+    description: "FR-03, UC-03. Roles: CUSTOMER, DRIVER"
+    operationId: getMe
+    x-roles: [CUSTOMER, DRIVER]
+    responses:
+      '200': { description: OK, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/User' } } } }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+  put:
+    tags: [Auth]
+    summary: Cập nhật thông tin cá nhân
+    description: "FR-03, UC-03. Roles: CUSTOMER, DRIVER"
+    operationId: updateMe
+    x-roles: [CUSTOMER, DRIVER]
+    requestBody: { required: true, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/UserUpdate' } } } }
+    responses:
+      '200': { description: Cập nhật thành công, content: { application/json: { schema: { $ref: '../components/schemas.yaml#/User' } } } }
+      '400': { $ref: '../components/responses.yaml#/BadRequest' }
+      '401': { $ref: '../components/responses.yaml#/Unauthorized' }
+      '409': { $ref: '../components/responses.yaml#/Conflict' }
