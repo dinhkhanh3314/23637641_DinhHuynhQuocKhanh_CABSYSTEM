@@ -96,8 +96,6 @@ API Gateway là điểm truy cập từ Client vào hệ thống.
 - Rate Limiting
 - Request Forwarding
 - Logging
-- Xác thực JWT cục bộ bằng public key (chỉ gọi Auth Service khi login/refresh, không gọi cho mỗi request)
-- Định tuyến `/users/me` theo vai trò (Customer → Customer Service, Driver → Driver Service)
 
 ### Không xử lý Business Logic
 
@@ -110,6 +108,30 @@ API Gateway không thực hiện:
 - Rating
 
 Các nghiệp vụ này thuộc Microservice tương ứng.
+
+### Health Check
+
+API Gateway cung cấp các endpoint:
+
+```text
+GET /health
+GET /ready
+GET /health/services
+```
+
+`/health/services` kiểm tra trạng thái của các Microservice trong hệ thống.
+
+### Security tại Gateway
+
+API Gateway thực hiện:
+
+- JWT validation
+- Role/permission check
+- Request validation
+- Rate limiting
+- Routing
+
+Client không gọi trực tiếp các Microservice.
 
 ---
 
@@ -130,8 +152,6 @@ Các nghiệp vụ này thuộc Microservice tương ứng.
 - Quản lý Role
 - Quản lý Permission
 - JWT / Refresh Token
-- Phát `UserRegistered` sau khi đăng ký Customer
-- Nhận `AccountStatusChanged` để khóa/mở khóa tài khoản và thu hồi Refresh Token (đăng nhập trả `ACCOUNT_LOCKED`)
 
 ### Database
 
@@ -162,8 +182,6 @@ RefreshToken
 - Quản lý Profile
 - Cập nhật thông tin Customer
 - Admin quản lý Customer
-- Nhận `UserRegistered` để tạo CustomerProfile
-- Admin khóa/mở khóa Customer, phát `AccountStatusChanged`
 
 ### Database
 
@@ -197,9 +215,6 @@ Thông tin xác thực như Password, Role và Token thuộc Auth Service.
 - Liên kết Driver với Vehicle
 - Quản lý trạng thái hoạt động của Driver
 - Quản lý Location của Driver
-- Nhận `BookingAccepted` → Driver `BUSY`; nhận `TripCompleted` → Driver `ONLINE` (BRL-26)
-- Nhận `DriverRated` → cập nhật `averageRating` (BRL-28)
-- Admin khóa/mở khóa Driver, phát `AccountStatusChanged`; Driver bị khóa không được Matching chọn (BRL-30)
 
 ### Database
 
@@ -212,7 +227,23 @@ Lưu các dữ liệu nghiệp vụ:
 ```text
 Driver
 Vehicle
+DriverApplication
 DriverVehicle
+DriverStatus
+```
+
+### Driver Registration & Approval
+
+Driver đăng ký thông qua Driver Service. Hồ sơ được tạo ở trạng thái `PENDING` và Admin có thể duyệt hoặc từ chối.
+
+```text
+Driver
+   ↓
+DriverApplication = PENDING
+   ↓
+Admin
+   ├── APPROVED
+   └── REJECTED
 ```
 
 ### Redis
@@ -263,15 +294,32 @@ Redis
 - Xử lý Driver không phản hồi
 - Tìm Driver thay thế
 - Xử lý trường hợp không tìm được Driver
-- Tính `estimatedFare` khi tạo Booking (BRL-25)
-- Quản lý BookingOffer và timeout (BRL-10, BRL-27)
-- Phát `BookingCreated`, `BookingOfferCreated`, `BookingAccepted`, `BookingCancelled`, `NoDriverAvailable`
-- Nhận `TripCreated` để cập nhật `tripId` của Booking
 
 ### Database
 
 ```text
 PostgreSQL
+```
+
+### Pagination
+
+Danh sách Booking của Customer hỗ trợ `limit` và `paging`.
+
+```text
+GET /bookings?limit=10&page=1
+```
+
+### Driver Offer
+
+Sau khi tìm được Driver phù hợp, Booking Service tạo và quản lý Driver Offer.
+
+```text
+BookingDriverOffer
+├── Booking
+├── Driver
+├── Status: PENDING / ACCEPTED / REJECTED / EXPIRED
+├── SentAt
+└── ExpiredAt
 ```
 
 ### Driver Matching
@@ -295,16 +343,14 @@ Driver Service
       ├── Driver Status
       ├── Driver Location
       └── Vehicle
+      │
+      ▼
+Redis GEO
+      │
+      └── Drivers within 1km
 ```
 
-### Booking Offer, Timeout và Nhất quán
-
-- **BookingOffer:** `offerId`, `bookingId`, `driverId`, `status` (PENDING / ACCEPTED / REJECTED / EXPIRED), `expiresAt`. Lưu trong PostgreSQL của Booking Service.
-- **Timeout (BRL-10):** scheduler trong Booking Service quét offer PENDING quá `expiresAt`, chuyển EXPIRED rồi tìm Driver thay thế. Thời hạn là cấu hình.
-- **Driver nhận offer:** `GET /drivers/me/booking-offers` (polling) và thông báo `BOOKING_OFFER_CREATED`.
-- **Accept và Cancel đồng thời (BRL-29):** Booking có cột `version` (optimistic lock). Accept chỉ thành công khi `status = SENT_TO_DRIVER`; Cancel chỉ thành công khi `PENDING_DRIVER` hoặc `SENT_TO_DRIVER`. Bên thua nhận `409`.
-- **Outbox:** thay đổi trạng thái Booking và bản ghi event `BookingAccepted` được ghi cùng một transaction vào bảng outbox, relay publish lên Kafka. Tránh trường hợp Booking đã `ACCEPTED` mà không có Trip.
-- **Accept là bất đồng bộ:** `POST /booking-offers/{id}/accept` trả `{bookingId, status, tripId: null}`. Trip Service tạo Trip rồi phát `TripCreated`, Booking Service ghi `tripId`.
+Driver Service hỗ trợ tìm Driver theo tọa độ với bán kính, `limit` và `paging`.
 
 ---
 
@@ -321,13 +367,25 @@ Driver Service
 - Theo dõi Trip
 - Cập nhật trạng thái Trip
 - Hoàn thành Trip
+- Hủy Trip
 - Xem lịch sử Trip
 - Customer Rating Driver
-- Nhận `BookingAccepted` để tạo Trip (idempotent theo `bookingId`), phát `TripCreated`
-- Lấy `fare` từ `estimatedFare` trong `BookingAccepted` (BRL-25)
-- Phát `TripCompleted`, `DriverRated`
-- Nhận `PaymentCreated` để ghi `paymentId` vào Trip
-- Payment thất bại không làm đổi trạng thái Trip (NFR-13)
+
+### Trip State
+
+```text
+ASSIGNED
+   ↓
+ARRIVING
+   ↓
+ARRIVED
+   ↓
+IN_PROGRESS
+   ↓
+COMPLETED
+```
+
+Trip có thể chuyển sang `CANCELED` khi chuyến bị hủy. Khi Customer hủy, hệ thống lưu `canceledBy`, `reason` và `canceledAt`.
 
 ### Database
 
@@ -386,6 +444,15 @@ Event `TripCompleted` được Payment Service và Notification Service xử lý
 - Cho phép thanh toán lại
 - Lưu lịch sử Payment
 
+### Idempotency
+
+Payment API sử dụng `Idempotency-Key` để tránh xử lý cùng một transaction nhiều lần. Request được gửi lại với cùng key sẽ trả lại kết quả trước đó và không tạo thêm transaction.
+
+```text
+POST /payments
+Idempotency-Key: abc123
+```
+
 ### Database
 
 ```text
@@ -416,9 +483,25 @@ Payment Service không lưu trực tiếp:
 - Mật khẩu ngân hàng
 - Thông tin thanh toán nhạy cảm
 
-Thanh toán điện tử được Payment Service xử lý nội bộ ở mức mô phỏng. Không tích hợp Payment Provider bên ngoài, không có webhook.
+### Payment Provider
 
-Payment Service nhận `TripCompleted`, tạo Payment (`amount` = `fare` trong event, unique theo `tripId` để idempotent) rồi phát `PaymentCreated`. Kết quả thanh toán phát qua `PaymentCompleted` / `PaymentFailed`.
+Để đáp ứng flow thanh toán online và callback, Payment Service giao tiếp với một Payment Provider. Trong phạm vi project có thể sử dụng Mock Payment Provider để kiểm thử bằng Postman.
+
+```text
+Payment Service
+      │
+      ▼
+Payment Provider
+      │
+      │ Callback
+      ▼
+Payment Service
+      │
+      ▼
+PaymentCompleted / PaymentFailed
+```
+
+Payment Provider không được phép truy cập trực tiếp Database của Payment Service.
 
 ---
 
@@ -435,8 +518,6 @@ Payment Service nhận `TripCompleted`, tạo Payment (`amount` = `fare` trong e
 - Xác định người nhận
 - Theo dõi trạng thái Notification
 - Lưu lịch sử Notification
-- Cung cấp API xem thông báo và đánh dấu đã đọc (`GET /notifications`, `POST /notifications/{id}/read`)
-- Thông báo là thông báo trong hệ thống, không dùng Notification Provider bên ngoài
 
 ### Database
 
@@ -450,7 +531,6 @@ Notification Service nhận các Event như:
 
 ```text
 BookingCreated
-BookingOfferCreated
 BookingAccepted
 BookingCancelled
 NoDriverAvailable
@@ -585,33 +665,39 @@ Payment Service
 
 ---
 
-## 11.4. Event Catalog
+# 12. Security Architecture
 
-| Event | Producer | Consumer | Payload chính | Mục đích |
-|---|---|---|---|---|
-| `UserRegistered` | Auth | Customer | userId, fullName, phone, email | Tạo CustomerProfile |
-| `AccountStatusChanged` | Customer, Driver | Auth | userId, status, reason | Khóa/mở khóa tài khoản |
-| `BookingCreated` | Booking | Notification | bookingId, customerId | Thông báo |
-| `BookingOfferCreated` | Booking | Notification | offerId, driverId, expiresAt | Thông báo Driver |
-| `BookingAccepted` | Booking | Trip, Driver, Notification | bookingId, customerId, driverId, vehicleId, pickup, dropoff, estimatedFare | Tạo Trip, Driver BUSY |
-| `BookingCancelled` | Booking | Notification | bookingId | Thông báo |
-| `NoDriverAvailable` | Booking | Notification | bookingId, customerId | Thông báo (FR-12) |
-| `TripCreated` | Trip | Booking, Notification | tripId, bookingId | Ghi `tripId` cho Booking |
-| `TripCompleted` | Trip | Payment, Driver, Notification | tripId, customerId, driverId, fare | Tạo Payment, Driver ONLINE |
-| `PaymentCreated` | Payment | Trip | paymentId, tripId | Ghi `paymentId` cho Trip |
-| `PaymentCompleted` | Payment | Notification | paymentId, tripId | Thông báo |
-| `PaymentFailed` | Payment | Notification | paymentId, tripId, failureReason | Thông báo (không đổi Trip) |
-| `DriverRated` | Trip | Driver | driverId, tripId, score | Cập nhật `averageRating` |
+Các yêu cầu bảo mật chính của project:
 
-## 11.5. Độ tin cậy của Event
+```text
+Client
+   │
+   ▼
+API Gateway
+   ├── JWT Validation
+   ├── Authorization
+   ├── Rate Limiting
+   └── Request Validation
+   │
+   ▼
+Microservices
+```
 
-- Producer dùng **Outbox pattern**: ghi dữ liệu nghiệp vụ và event trong cùng transaction, relay publish lên Kafka (NFR-11, NFR-19, NFR-21).
-- Consumer xử lý **idempotent**: lưu `eventId` đã xử lý hoặc dùng unique key nghiệp vụ (ví dụ Trip unique theo `bookingId`, Payment unique theo `tripId`).
-- Event gắn `eventId`, `occurredAt`, `aggregateId` và key Kafka theo `aggregateId` để giữ thứ tự theo từng Booking/Trip.
+Các API phải xử lý được các smoke test về:
+
+- Data encryption at rest
+- SQL Injection
+- XSS input
+- JWT tampering
+- Unauthorized API access
+- Rate limiting
+- Replay attack / Idempotency
+
+Sensitive data phải được mã hóa khi lưu trữ và secret/key không được commit vào GitHub.
 
 ---
 
-# 12. Database Architecture
+# 13. Database Architecture
 
 Mỗi Microservice sở hữu Database riêng.
 
@@ -663,7 +749,7 @@ Service → Kafka → Event → Service
 
 ---
 
-# 13. Quy trình nghiệp vụ chính
+# 14. Quy trình nghiệp vụ chính
 
 Quy trình nghiệp vụ chính của CABSystem:
 
@@ -738,7 +824,7 @@ Gửi Booking cho Driver
 
 ---
 
-# 14. Nguyên tắc lựa chọn Communication
+# 15. Nguyên tắc lựa chọn Communication
 
 ```text
 Cần phản hồi ngay từ Service khác?
@@ -765,7 +851,7 @@ Chỉ tạo Service-to-Service communication khi có yêu cầu nghiệp vụ ho
 
 ---
 
-# 15. Phạm vi kiến trúc
+# 16. Phạm vi kiến trúc
 
 Kiến trúc hiện tại tập trung vào các nghiệp vụ chính:
 
@@ -786,7 +872,6 @@ Rating
 Các thành phần không thuộc kiến trúc hiện tại:
 
 - External Map Service
-- External Payment Provider
 - External Notification Provider
 - Accounting System
 - Driver Salary/Commission
@@ -797,7 +882,7 @@ Các thành phần không thuộc kiến trúc hiện tại:
 
 ---
 
-# 16. Cấu trúc thư mục dự kiến
+# 17. Cấu trúc thư mục dự kiến
 
 ```text
 CABSystem/
@@ -843,36 +928,3 @@ service/
 ├── Dockerfile
 └── package.json
 ```
-
----
-
-# 17. Đồng bộ với API và Requirements
-
-## 17.1. openapi.yaml → Microservice
-
-Mỗi operation trong `openapi.yaml` có `x-service`.
-
-| Nhóm API | Service |
-|---|---|
-| `/auth/*` | Auth Service |
-| `/users/me` | Customer Service (CUSTOMER) / Driver Service (DRIVER) |
-| `/bookings*`, `/booking-offers/*`, `/drivers/me/booking-offers`, `/admin/bookings` | Booking Service |
-| `/drivers/me/status`, `/drivers/me/vehicles*`, `/admin/drivers*`, `/admin/vehicles*` | Driver Service |
-| `/admin/customers*` | Customer Service |
-| `/trips*` (kể cả `/rating`), `/admin/trips` | Trip Service |
-| `/trips/{id}/payment`, `/payments/*` | Payment Service |
-| `/notifications*` | Notification Service |
-
-## 17.2. Quyết định thiết kế
-
-- Không có Payment Provider và Notification Provider bên ngoài; các requirements đã được sửa theo.
-- Accept Booking là bất đồng bộ; Trip và Payment xuất hiện sau khi event được xử lý.
-- Giữ MongoDB cho Trip theo thiết kế hiện tại. Lý do cần ghi rõ khi bảo vệ: dữ liệu Trip dạng document, dễ mở rộng trường theo dõi. Trip vẫn phải có state machine chặt (BRL-15, BRL-16).
-- Access token ngắn hạn; khóa tài khoản có hiệu lực hoàn toàn sau khi token hết hạn, Refresh Token bị thu hồi ngay.
-
-## 17.3. Vấn đề còn mở
-
-- Ai tạo tài khoản Driver và Admin (requirements chỉ có đăng ký Customer). Đề xuất: Admin tạo Driver qua Driver Service, Driver Service yêu cầu Auth Service tạo User; cần stakeholder xác nhận.
-- Thời hạn phản hồi offer và số lần tìm Driver thay thế tối đa.
-- Công thức tính `estimatedFare` (ngoài phạm vi bản đồ nâng cao, cần công thức đơn giản theo loại xe).
-- Trạng thái `NO_DRIVER_FOUND` của Booking cần stakeholder xác nhận.
