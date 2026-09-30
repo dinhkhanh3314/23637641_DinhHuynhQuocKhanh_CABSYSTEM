@@ -213,12 +213,12 @@ bao gồm:
 
 ### API
 
-- [API Documentation](docs/api/api-docs.md)
+- [API Documentation](docs/api_docs.yaml)
 
 ### Testing
 
-- [Test Plan](docs/testing/test-plan.md)
-- [Test Cases](docs/testing/test-cases.md)
+- [TBD]
+- [TBD]
 
 ## 13. Quy trình phát triển
 
