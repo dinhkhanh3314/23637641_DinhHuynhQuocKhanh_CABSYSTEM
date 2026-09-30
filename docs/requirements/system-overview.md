@@ -104,5 +104,5 @@ CABSystem cần đáp ứng các yêu cầu cơ bản về:
 - Phân quyền theo từng loại người dùng.
 - Đảm bảo dữ liệu Booking, Trip và Payment được quản lý nhất quán.
 - Hỗ trợ xử lý nhiều yêu cầu của người dùng.
-- Đảm bảo hệ thống vẫn hoạt động khi các dịch vụ bên ngoài như Payment hoặc Notification xảy ra lỗi.
+- Đảm bảo các chức năng còn lại vẫn hoạt động khi Payment Service hoặc Notification Service xảy ra lỗi.
 - Có khả năng bảo trì và mở rộng khi nhu cầu của công ty tăng lên.

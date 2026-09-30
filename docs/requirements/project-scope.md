@@ -60,7 +60,7 @@ Hệ thống hỗ trợ:
 
 - Tạo Payment sau khi Trip hoàn thành.
 - Thanh toán bằng tiền mặt.
-- Thanh toán điện tử thông qua Payment Provider.
+- Thanh toán điện tử do Payment Service xử lý nội bộ (mô phỏng, không tích hợp cổng thanh toán bên ngoài).
 - Cập nhật kết quả Payment.
 - Thông báo kết quả Payment cho Customer.
 - Xử lý trường hợp Payment thất bại.
@@ -83,6 +83,13 @@ Admin có thể:
 - Theo dõi Trip.
 - Hỗ trợ xử lý các trường hợp phát sinh trong quá trình hoạt động.
 
+### 2.9. Thông báo
+
+Hệ thống hỗ trợ:
+
+- Tạo thông báo trong hệ thống khi có sự kiện quan trọng về Booking, Trip hoặc Payment.
+- Customer và Driver xem danh sách thông báo và đánh dấu đã đọc.
+
 ## 3. Ngoài phạm vi hệ thống
 
 Các chức năng sau không thuộc phạm vi của CABSystem:
@@ -96,6 +103,8 @@ Các chức năng sau không thuộc phạm vi của CABSystem:
 - Phân tích dữ liệu nâng cao và dự báo.
 - Quản lý nhiều công ty vận tải độc lập.
 - Các chức năng bản đồ và định tuyến nâng cao.
+- Tích hợp cổng thanh toán bên ngoài (Payment Provider).
+- Tích hợp dịch vụ gửi thông báo bên ngoài (SMS, email, push notification của bên thứ ba).
 - Hệ thống chăm sóc khách hàng chuyên biệt ngoài các chức năng hỗ trợ cơ bản.
 - Các nghiệp vụ nội bộ không liên quan trực tiếp đến dịch vụ đặt xe.
 
@@ -125,9 +134,9 @@ Sử dụng các chức năng liên quan đến tài khoản, Vehicle, tiếp nh
 
 Quản lý Customer, Driver, Vehicle và theo dõi hoạt động của Booking và Trip.
 
-### 5.4. External Providers
+### 5.4. Hệ thống bên ngoài
 
-Payment Provider và Notification Provider hỗ trợ các chức năng thanh toán và thông báo của hệ thống.
+Không có hệ thống bên ngoài tích hợp trong phạm vi hiện tại.
 
 ## 6. Giới hạn phạm vi
 

@@ -44,7 +44,7 @@ Driver có thể quản lý Vehicle cá nhân, trong khi Admin có thể quản 
 
 Hệ thống hỗ trợ Customer thanh toán sau khi Trip hoàn thành.
 
-Customer có thể sử dụng tiền mặt hoặc hình thức thanh toán điện tử thông qua Payment Provider.
+Customer có thể sử dụng tiền mặt hoặc hình thức thanh toán điện tử do hệ thống xử lý nội bộ (mô phỏng).
 
 ### 2.8. BR-08 – Đánh giá Driver
 
@@ -67,3 +67,4 @@ Hệ thống cần hỗ trợ xử lý các trường hợp phát sinh trong qu�
 - Không tìm được Driver phù hợp.
 - Payment thất bại.
 - Các vấn đề phát sinh trong quá trình Booking và Trip cần Admin hỗ trợ.
+- Thông báo cho Customer và Driver về các sự kiện quan trọng.

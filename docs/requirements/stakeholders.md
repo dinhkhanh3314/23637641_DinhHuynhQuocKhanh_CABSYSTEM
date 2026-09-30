@@ -55,28 +55,6 @@ Mối quan tâm:
 - Có thể quản lý thông tin cá nhân và Vehicle.
 - Có thể cập nhật trạng thái Trip.
 
-### 2.5. Payment Provider
-
-Payment Provider là đơn vị cung cấp dịch vụ thanh toán điện tử được hệ thống sử dụng khi Customer lựa chọn hình thức thanh toán điện tử.
-
-Mối quan tâm:
-
-- Nhận và xử lý yêu cầu thanh toán.
-- Trả kết quả thanh toán cho CABSystem.
-- Đảm bảo thông tin giao dịch được xử lý an toàn.
-
-CABSystem không trực tiếp lưu thông tin thẻ hoặc thông tin tài khoản thanh toán nhạy cảm của Customer.
-
-### 2.6. Notification Provider
-
-Notification Provider là dịch vụ hỗ trợ gửi thông báo đến người dùng khi hệ thống cần thông báo các sự kiện liên quan đến Booking, Trip hoặc Payment.
-
-Mối quan tâm:
-
-- Nhận yêu cầu gửi thông báo từ CABSystem.
-- Gửi thông báo đến đúng người nhận.
-- Trả kết quả xử lý về cho hệ thống.
-
 ## 3. Actor chính của hệ thống
 
 Ba actor chính tương tác trực tiếp với CABSystem là:
@@ -87,7 +65,7 @@ Ba actor chính tương tác trực tiếp với CABSystem là:
 | Driver   | Tiếp nhận và thực hiện Trip         |
 | Admin    | Quản lý và hỗ trợ vận hành hệ thống |
 
-Ngoài ra, **Payment Provider** và **Notification Provider** là các hệ thống bên ngoài có tương tác với CABSystem.
+CABSystem không tích hợp hệ thống bên ngoài trong phạm vi hiện tại. Thanh toán điện tử (mô phỏng) và thông báo trong hệ thống do **Payment Service** và **Notification Service** xử lý nội bộ.
 
 ## 4. Phân loại Stakeholders
 
@@ -97,8 +75,6 @@ Ngoài ra, **Payment Provider** và **Notification Provider** là các hệ th�
 | Nhân viên vận hành    | Internal Stakeholder | Trực tiếp thông qua Admin |
 | Customer              | User                 | Trực tiếp                 |
 | Driver                | User                 | Trực tiếp                 |
-| Payment Provider      | External System      | Tích hợp                  |
-| Notification Provider | External System      | Tích hợp                  |
 
 ## 5. Stakeholder Matrix
 
@@ -108,8 +84,6 @@ Ngoài ra, **Payment Provider** và **Notification Provider** là các hệ th�
 | Nhân viên vận hành    | Cao              | Cao             | Quản lý chặt chẽ     |
 | Customer              | Trung bình       | Cao             | Duy trì tương tác    |
 | Driver                | Trung bình       | Cao             | Duy trì tương tác    |
-| Payment Provider      | Cao              | Trung bình      | Duy trì quan hệ      |
-| Notification Provider | Trung bình       | Trung bình      | Theo dõi và phối hợp |
 
 ## 6. Mối quan tâm của Stakeholders
 
@@ -119,8 +93,6 @@ CABSystem cần đáp ứng các nhu cầu chính của các bên:
 - **Nhân viên vận hành:** cần theo dõi và xử lý các hoạt động trong hệ thống.
 - **Customer:** cần đặt xe, theo dõi Trip, thanh toán và đánh giá Driver.
 - **Driver:** cần nhận Booking phù hợp và quản lý quá trình thực hiện Trip.
-- **Payment Provider:** cần trao đổi thông tin giao dịch với hệ thống một cách an toàn.
-- **Notification Provider:** cần hỗ trợ gửi thông báo đến người dùng.
 
 ## 7. Quản lý Stakeholders
 

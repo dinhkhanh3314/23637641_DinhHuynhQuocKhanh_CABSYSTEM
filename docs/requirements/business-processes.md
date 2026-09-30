@@ -66,7 +66,7 @@ Nếu Booking không còn ở trạng thái được phép hủy, hệ thống t
 ## 6. Quy trình thanh toán
 
 1. Trip được hoàn thành.
-2. Hệ thống tạo Payment.
+2. Hệ thống tạo Payment (bất đồng bộ ngay sau khi Trip hoàn thành).
 3. Hệ thống xác định số tiền cần thanh toán.
 4. Customer lựa chọn hình thức thanh toán.
 
@@ -77,11 +77,10 @@ Nếu Customer thanh toán bằng tiền mặt:
 
 Nếu Customer thanh toán điện tử:
 
-1. Hệ thống gửi yêu cầu đến Payment Provider.
-2. Payment Provider xử lý giao dịch.
-3. Payment Provider trả kết quả cho hệ thống.
-4. Hệ thống cập nhật kết quả Payment.
-5. Hệ thống thông báo kết quả cho Customer.
+1. Payment Service xử lý giao dịch trong hệ thống (mô phỏng).
+2. Payment Service xác định kết quả giao dịch.
+3. Hệ thống cập nhật kết quả Payment.
+4. Hệ thống thông báo kết quả cho Customer.
 
 Nếu thanh toán thất bại, hệ thống thông báo cho Customer và cho phép thực hiện lại theo chính sách của hệ thống.
 

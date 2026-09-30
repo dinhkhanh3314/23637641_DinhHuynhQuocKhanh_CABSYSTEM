@@ -104,11 +104,11 @@ Sau khi Trip hoàn thành, hệ thống tạo thông tin Payment tương ứng v
 
 Hệ thống cho phép Customer thực hiện thanh toán bằng tiền mặt hoặc hình thức thanh toán điện tử.
 
-Đối với thanh toán điện tử, hệ thống tương tác với Payment Provider để xử lý giao dịch.
+Đối với thanh toán điện tử, Payment Service xử lý giao dịch trong hệ thống (mô phỏng, không tích hợp cổng thanh toán bên ngoài).
 
 ### 7.3. FR-22 – Cập nhật kết quả Payment
 
-Hệ thống tiếp nhận và cập nhật kết quả thanh toán từ Payment Provider.
+Payment Service cập nhật kết quả thanh toán sau khi xử lý giao dịch.
 
 ### 7.4. FR-23 – Thông báo kết quả Payment
 
@@ -142,7 +142,13 @@ Admin có thể xem và quản lý thông tin Driver trong hệ thống.
 
 Admin có thể theo dõi trạng thái của Booking và Trip để hỗ trợ hoạt động vận hành và xử lý các trường hợp phát sinh.
 
-## 11. Tổng hợp Functional Requirements
+## 11. Thông báo
+
+### 11.1. FR-29 – Xem thông báo
+
+Hệ thống tạo thông báo trong hệ thống khi có các sự kiện quan trọng (Booking được tiếp nhận, không tìm được Driver, Trip hoàn thành, Payment thất bại...). Customer và Driver có thể xem danh sách thông báo và đánh dấu đã đọc.
+
+## 12. Tổng hợp Functional Requirements
 
 Các Functional Requirements của CABSystem tập trung vào các nhóm chức năng:
 
@@ -155,3 +161,4 @@ Các Functional Requirements của CABSystem tập trung vào các nhóm chức 
 - Đánh giá Driver.
 - Quản lý Customer và Driver.
 - Theo dõi hoạt động.
+- Thông báo.

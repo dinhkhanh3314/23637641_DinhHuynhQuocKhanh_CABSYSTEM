@@ -88,7 +88,7 @@ Customer chỉ được thực hiện Payment sau khi Trip đã hoàn thành.
 
 ### 7.2. BRL-18 – Hỗ trợ nhiều hình thức thanh toán
 
-CABSystem hỗ trợ thanh toán bằng tiền mặt và thanh toán điện tử thông qua Payment Provider.
+CABSystem hỗ trợ thanh toán bằng tiền mặt và thanh toán điện tử do Payment Service xử lý nội bộ (mô phỏng).
 
 ### 7.3. BRL-19 – Xử lý Payment thất bại
 
@@ -121,3 +121,29 @@ Admin chỉ được thực hiện các chức năng quản lý phù hợp với
 Việc tìm kiếm và phân công Driver được hệ thống thực hiện tự động trong quy trình thông thường.
 
 Admin chỉ tham gia khi cần theo dõi hoặc hỗ trợ xử lý trường hợp phát sinh.
+
+## 10. Quy tắc bổ sung
+
+### 10.1. BRL-25 – Giá cước
+
+Giá cước ước tính do Booking Service tính khi tạo Booking. Trip sử dụng giá này làm `fare` và Payment sử dụng làm `amount`.
+
+### 10.2. BRL-26 – Trạng thái Driver theo Trip
+
+Khi Driver chấp nhận Booking, Driver chuyển sang trạng thái BUSY. Khi Trip hoàn thành, Driver trở về ONLINE.
+
+### 10.3. BRL-27 – Thời gian chờ phản hồi
+
+Booking được gửi cho Driver có thời hạn phản hồi cấu hình được. Hết hạn, offer chuyển sang EXPIRED và áp dụng BRL-10.
+
+### 10.4. BRL-28 – Điểm đánh giá Driver
+
+Sau khi Customer đánh giá, điểm trung bình (averageRating) của Driver được cập nhật để phục vụ Driver Matching.
+
+### 10.5. BRL-29 – Xung đột chấp nhận và hủy
+
+Khi Customer hủy Booking và Driver chấp nhận cùng lúc, chỉ một thao tác thành công theo trạng thái Booking tại thời điểm xử lý. Thao tác còn lại bị từ chối.
+
+### 10.6. BRL-30 – Khóa tài khoản
+
+Tài khoản bị Admin khóa không thể đăng nhập; Driver bị khóa không được chọn trong Driver Matching.

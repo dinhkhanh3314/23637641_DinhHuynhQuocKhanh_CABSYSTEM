@@ -11,7 +11,6 @@ Use Cases mô tả các chức năng của CABSystem dưới góc nhìn tương 
 | Customer         | Người sử dụng dịch vụ đặt xe                |
 | Driver           | Tài xế tiếp nhận và thực hiện Trip          |
 | Admin            | Người quản lý và hỗ trợ vận hành hệ thống   |
-| Payment Provider | Hệ thống bên ngoài xử lý thanh toán điện tử |
 
 ## 3. Danh sách Use Cases
 
@@ -33,12 +32,13 @@ Use Cases mô tả các chức năng của CABSystem dưới góc nhìn tương 
 | UC-14 | Xem lịch sử Trip          | Customer                   |
 | UC-15 | Quản lý Vehicle cá nhân   | Driver                     |
 | UC-16 | Quản lý Vehicle           | Admin                      |
-| UC-17 | Thanh toán                | Customer, Payment Provider |
+| UC-17 | Thanh toán | Customer |
 | UC-18 | Xem kết quả Payment       | Customer                   |
 | UC-19 | Đánh giá Driver           | Customer                   |
 | UC-20 | Quản lý Customer          | Admin                      |
 | UC-21 | Quản lý Driver            | Admin                      |
 | UC-22 | Theo dõi Booking và Trip  | Admin                      |
+| UC-23 | Xem thông báo | Customer, Driver |
 
 ## 4. Quan hệ giữa các Use Cases
 
@@ -281,8 +281,8 @@ Sau khi Trip hoàn thành:
 2. Driver xem thông tin chuyến đi.
 3. Driver chọn chấp nhận Booking.
 4. Hệ thống ghi nhận Driver.
-5. Hệ thống tạo Trip tương ứng.
-6. Hệ thống cập nhật trạng thái Booking.
+5. Hệ thống cập nhật trạng thái Booking thành đã tiếp nhận.
+6. Hệ thống tạo Trip tương ứng (bất đồng bộ; Trip xuất hiện sau khi Booking được cập nhật trong thời gian ngắn).
 
 **Luồng thay thế:**
 
@@ -419,7 +419,7 @@ Sau khi Trip hoàn thành:
 
 ### 5.17. UC-17 – Thanh toán
 
-**Actor:** Customer, Payment Provider
+**Actor:** Customer
 
 **Mục tiêu:** Thanh toán chi phí Trip.
 
@@ -432,11 +432,10 @@ Sau khi Trip hoàn thành:
 
 1. Customer chọn hình thức thanh toán.
 2. Nếu chọn tiền mặt, hệ thống ghi nhận thanh toán theo hình thức tiền mặt.
-3. Nếu chọn thanh toán điện tử, hệ thống gửi yêu cầu đến Payment Provider.
-4. Payment Provider xử lý giao dịch.
-5. Payment Provider trả kết quả.
-6. Hệ thống cập nhật kết quả Payment.
-7. Hệ thống thông báo kết quả cho Customer.
+3. Nếu chọn thanh toán điện tử, Payment Service xử lý giao dịch trong hệ thống (mô phỏng).
+4. Payment Service xác định kết quả giao dịch.
+5. Hệ thống cập nhật kết quả Payment.
+6. Hệ thống thông báo kết quả cho Customer.
 
 **Ngoại lệ:**
 
@@ -537,6 +536,24 @@ Sau khi Trip hoàn thành:
 4. Admin xác định các trường hợp cần hỗ trợ.
 5. Admin thực hiện xử lý trong phạm vi được phép.
 
+### 5.23. UC-23 – Xem thông báo
+
+**Actor:** Customer, Driver
+
+**Mục tiêu:** Xem thông báo về các sự kiện Booking, Trip, Payment.
+
+**Tiền điều kiện:**
+
+- Người dùng đã đăng nhập.
+
+**Luồng chính:**
+
+1. Người dùng mở danh sách thông báo.
+2. Hệ thống lấy danh sách thông báo của người dùng.
+3. Hệ thống hiển thị danh sách.
+4. Người dùng chọn thông báo để đánh dấu đã đọc.
+5. Hệ thống cập nhật trạng thái đã đọc.
+
 ## 6. Mapping Business Requirements và Use Cases
 
 | Business Requirement                  | Use Cases                         |
@@ -550,7 +567,7 @@ Sau khi Trip hoàn thành:
 | BR-07 – Thanh toán                    | UC-17, UC-18                      |
 | BR-08 – Đánh giá Driver               | UC-19                             |
 | BR-09 – Quản lý và theo dõi hoạt động | UC-20, UC-21, UC-22               |
-| BR-10 – Xử lý trường hợp phát sinh    | UC-06, UC-10, UC-17, UC-22        |
+| BR-10 – Xử lý trường hợp phát sinh    | UC-06, UC-10, UC-17, UC-22, UC-23        |
 
 ## 7. Mapping Functional Requirements và Use Cases
 
@@ -584,3 +601,4 @@ Sau khi Trip hoàn thành:
 | FR-26 – Quản lý Customer                | UC-20        |
 | FR-27 – Quản lý Driver                  | UC-21        |
 | FR-28 – Theo dõi Booking và Trip        | UC-22        |
+| FR-29 – Xem thông báo | UC-23 |

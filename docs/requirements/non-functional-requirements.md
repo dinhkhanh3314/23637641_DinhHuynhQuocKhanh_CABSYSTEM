@@ -46,9 +46,9 @@ Quá trình tìm kiếm Driver cần được thực hiện trong thời gian ph
 
 Các chức năng chính của CABSystem cần có khả năng hoạt động ổn định trong thời gian cung cấp dịch vụ.
 
-### 4.2. NFR-10 – Lỗi dịch vụ bên ngoài
+### 4.2. NFR-10 – Lỗi dịch vụ thành phần
 
-Khi Payment Provider hoặc Notification Provider gặp lỗi, hệ thống phải xử lý lỗi phù hợp và không làm ảnh hưởng đến toàn bộ hoạt động của hệ thống.
+Khi Payment Service hoặc Notification Service gặp lỗi, hệ thống phải xử lý lỗi phù hợp và các chức năng còn lại (Booking, Trip) vẫn hoạt động.
 
 ## 5. Reliability
 
@@ -97,3 +97,7 @@ Dữ liệu giữa Booking, Trip, Payment và Rating phải được duy trì nh
 ### 8.2. NFR-20 – Bảo vệ dữ liệu
 
 Dữ liệu của người dùng và dữ liệu nghiệp vụ phải được bảo vệ khỏi việc truy cập hoặc thay đổi trái phép.
+
+### 8.3. NFR-21 – Xử lý sự kiện giữa các service
+
+Các sự kiện trao đổi giữa các service (Booking, Trip, Payment, Driver, Notification) không được mất và không được xử lý trùng làm sai dữ liệu. Service nhận sự kiện phải xử lý idempotent.
