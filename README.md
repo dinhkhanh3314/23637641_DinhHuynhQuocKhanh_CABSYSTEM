@@ -170,7 +170,7 @@ API được xây dựng theo kiến trúc RESTful API.
 
 Tài liệu API được lưu tại:
 
-[API Documentation](docs/api/api-docs.md)
+[API Documentation](docs/api_docs.yaml)
 
 ## 11. Testing
 
@@ -181,11 +181,6 @@ Quá trình kiểm thử bao gồm:
 - Kiểm thử các chức năng chính.
 - Kiểm thử các trường hợp lỗi.
 - Kiểm thử API.
-
-Chi tiết tại:
-
-- [Test Plan](docs/testing/test-plan.md)
-- [Test Cases](docs/testing/test-cases.md)
 
 ## 12. Tài liệu dự án
 
