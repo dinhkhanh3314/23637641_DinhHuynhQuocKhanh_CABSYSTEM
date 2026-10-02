@@ -1,7 +1,12 @@
 const express = require("express");
 
-const { registerCustomer, loginCustomer } = require("../services/authService");
-
+const {
+  registerCustomer,
+  loginCustomer,
+  registerDriver,
+  sendDriverOtp,
+  verifyDriverOtp,
+} = require("../services/authService");
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
@@ -71,6 +76,99 @@ router.post("/login", async (req, res) => {
 
     res.status(500).json({
       message: "Login failed",
+    });
+  }
+});
+
+router.post("/driver/send-otp", async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({
+        message: "Số điện thoại là bắt buộc",
+      });
+    }
+
+    const otp = await sendDriverOtp(phone);
+
+    res.status(200).json({
+      message: "Đã gửi OTP",
+      otp,
+    });
+  } catch (error) {
+    console.error("Send driver OTP error:", error);
+
+    res.status(500).json({
+      message: "Không thể gửi OTP",
+    });
+  }
+});
+
+router.post("/driver/verify-otp", async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+
+    if (!phone || !otp) {
+      return res.status(400).json({
+        message: "Số điện thoại và OTP là bắt buộc",
+      });
+    }
+
+    await verifyDriverOtp(phone, otp);
+
+    res.status(200).json({
+      message: "Xác thực OTP thành công",
+    });
+  } catch (error) {
+    if (error.message === "OTP_EXPIRED") {
+      return res.status(400).json({
+        message: "OTP đã hết hạn",
+      });
+    }
+
+    if (error.message === "INVALID_OTP") {
+      return res.status(400).json({
+        message: "OTP không hợp lệ",
+      });
+    }
+
+    console.error("Verify driver OTP error:", error);
+
+    res.status(500).json({
+      message: "Không thể xác thực OTP",
+    });
+  }
+});
+
+router.post("/driver/register", async (req, res) => {
+  try {
+    const result = await registerDriver(req.body);
+
+    res.status(201).json(result);
+  } catch (error) {
+    console.error(error);
+
+    if (error.message === "PHONE_NOT_VERIFIED") {
+      return res.status(400).json({
+        message: "Số điện thoại chưa được xác thực OTP",
+      });
+    }
+
+    if (error.message === "USER_ALREADY_EXISTS") {
+      return res.status(409).json({
+        message: "Số điện thoại hoặc email đã được đăng ký",
+      });
+    }
+
+    if (error.message === "DRIVER_CREATION_FAILED") {
+      return res.status(503).json({
+        message: "Không thể tạo hồ sơ tài xế",
+      });
+    }
+
+    return res.status(400).json({
+      message: error.message,
     });
   }
 });

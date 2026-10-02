@@ -7,12 +7,45 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
 
 const { createCustomer } = require("../grpc/customerClient");
+const { createDriver } = require("../grpc/driverClient");
+
+const redisClient = require("../redisClient");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
 
 const prisma = new PrismaClient({ adapter });
+
+async function sendDriverOtp(phone) {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  await redisClient.set(`driver:otp:${phone}`, otp, {
+    EX: 300,
+  });
+
+  return otp;
+}
+
+async function verifyDriverOtp(phone, otp) {
+  const savedOtp = await redisClient.get(`driver:otp:${phone}`);
+
+  if (!savedOtp) {
+    throw new Error("OTP_EXPIRED");
+  }
+
+  if (savedOtp !== otp) {
+    throw new Error("INVALID_OTP");
+  }
+
+  await redisClient.set(`driver:otp:verified:${phone}`, "true", {
+    EX: 600,
+  });
+
+  await redisClient.del(`driver:otp:${phone}`);
+
+  return true;
+}
 
 async function registerCustomer({ phone, email, password }) {
   const existingUser = await prisma.user.findFirst({
@@ -101,7 +134,85 @@ async function loginCustomer({ identifier, password }) {
   };
 }
 
+async function registerDriver(data) {
+  const {
+    phone,
+    email,
+    password,
+    fullName,
+    licenseNo,
+    vehicleType,
+    plateNumber,
+    brand,
+    model,
+    color,
+  } = data;
+
+  const verified = await redisClient.get(`driver:otp:verified:${phone}`);
+
+  if (verified !== "true") {
+    throw new Error("PHONE_NOT_VERIFIED");
+  }
+
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [{ phone }, { email }],
+    },
+  });
+
+  if (existingUser) {
+    throw new Error("USER_ALREADY_EXISTS");
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      phone,
+      email,
+      passwordHash,
+      role: "DRIVER",
+      status: "ACTIVE",
+    },
+  });
+
+  try {
+    const driver = await createDriver({
+      userId: user.id,
+      fullName,
+      phone,
+      licenseNo,
+      vehicleType,
+      plateNumber,
+      brand,
+      model,
+      color,
+    });
+
+    await redisClient.del(`driver:otp:verified:${phone}`);
+
+    return {
+      message: "Gửi hồ sơ tài xế thành công",
+      userId: user.id,
+      driverId: driver.id,
+      role: user.role,
+      applicationStatus: "PENDING",
+    };
+  } catch (error) {
+    await prisma.user.delete({
+      where: {
+        id: user.id,
+      },
+    });
+
+    throw new Error("DRIVER_CREATION_FAILED");
+  }
+}
+
 module.exports = {
   registerCustomer,
   loginCustomer,
+  registerDriver,
+  sendDriverOtp,
+  verifyDriverOtp,
 };

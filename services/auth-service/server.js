@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const redisClient = require("./redisClient");
 const express = require("express");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
@@ -32,10 +33,19 @@ app.get("/health", async (req, res) => {
   }
 });
 
-app.use("/auth", authRoutes);
+redisClient
+  .connect()
+  .then(() => {
+    console.log("Redis connected");
 
-const PORT = process.env.PORT || 3001;
+    app.use("/auth", authRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Auth Service running on port ${PORT}`);
-});
+    const PORT = process.env.PORT || 3001;
+
+    app.listen(PORT, () => {
+      console.log(`Auth Service running on port ${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error("Redis connection failed:", error);
+  });

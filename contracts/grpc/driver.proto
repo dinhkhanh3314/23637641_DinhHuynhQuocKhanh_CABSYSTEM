@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package driver;
+
+service DriverService {
+  rpc CreateDriver (CreateDriverRequest) returns (DriverResponse);
+}
+
+message CreateDriverRequest {
+  int32 user_id = 1;
+  string full_name = 2;
+  string phone = 3;
+  string license_no = 4;
+
+  string vehicle_type = 5;
+  string plate_number = 6;
+  string brand = 7;
+  string model = 8;
+  string color = 9;
+}
+
+message DriverResponse {
+  int32 id = 1;
+  int32 user_id = 2;
+  string full_name = 3;
+  string phone = 4;
+  string status = 5;
+}

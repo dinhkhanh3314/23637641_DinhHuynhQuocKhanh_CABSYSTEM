@@ -1,13 +1,52 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+model Driver {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  fullName  String   @map("full_name") @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  licenseNo String?  @unique @map("license_no") @db.VarChar(50)
+  status    String   @default("OFFLINE") @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  vehicle     Vehicle?
+  application Application?
+
+  @@map("drivers")
+}
+
+model Vehicle {
+  id          Int      @id @default(autoincrement())
+  driverId    Int      @unique @map("driver_id")
+  vehicleType String   @map("vehicle_type") @db.VarChar(30)
+  plateNumber String   @unique @map("plate_number") @db.VarChar(20)
+  brand       String?  @db.VarChar(50)
+  model       String?  @db.VarChar(50)
+  color       String?  @db.VarChar(30)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@map("vehicles")
+}
+
+model Application {
+  id        Int      @id @default(autoincrement())
+  driverId  Int      @unique @map("driver_id")
+  status    String   @default("PENDING") @db.VarChar(20)
+  note      String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@map("applications")
 }

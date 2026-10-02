@@ -1,0 +1,88 @@
+const express = require("express");
+const router = express.Router();
+
+const {
+  createDriver,
+  getDriver,
+  updateDriver,
+  createVehicle,
+  updateVehicle,
+} = require("../services/driverService");
+
+router.post("/", async (req, res) => {
+  try {
+    const driver = await createDriver(req.body);
+    res.status(201).json(driver);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Không thể tạo hồ sơ tài xế",
+    });
+  }
+});
+
+router.get("/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const driver = await getDriver(id);
+
+    if (!driver) {
+      return res.status(404).json({
+        message: "Không tìm thấy tài xế",
+      });
+    }
+
+    res.json(driver);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Không thể lấy thông tin tài xế",
+    });
+  }
+});
+
+router.put("/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const driver = await updateDriver(id, req.body);
+
+    res.json(driver);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Không thể cập nhật tài xế",
+    });
+  }
+});
+
+router.post("/:id/vehicle", async (req, res) => {
+  try {
+    const driverId = Number(req.params.id);
+
+    const vehicle = await createVehicle(driverId, req.body);
+
+    res.status(201).json(vehicle);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Không thể tạo thông tin xe",
+    });
+  }
+});
+
+router.put("/:id/vehicle", async (req, res) => {
+  try {
+    const driverId = Number(req.params.id);
+
+    const vehicle = await updateVehicle(driverId, req.body);
+
+    res.json(vehicle);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Không thể cập nhật thông tin xe",
+    });
+  }
+});
+
+module.exports = router;
