@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "users" (
-    "id" UUID NOT NULL,
+    "id" SERIAL NOT NULL,
     "phone" VARCHAR(20),
     "email" VARCHAR(255),
     "password_hash" TEXT NOT NULL,
