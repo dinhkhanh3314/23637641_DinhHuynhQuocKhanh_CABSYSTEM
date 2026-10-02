@@ -5,6 +5,7 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
 
 const customerRoutes = require("./routes/customer");
+const { startGrpcServer } = require("./grpc/customerServer");
 
 const app = express();
 
@@ -41,3 +42,5 @@ const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   console.log(`Customer Service running on port ${PORT}`);
 });
+
+startGrpcServer();

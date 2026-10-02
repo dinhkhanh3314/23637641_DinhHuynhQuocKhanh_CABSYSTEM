@@ -2,8 +2,11 @@ require("dotenv").config();
 
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
+
+const { createCustomer } = require("../grpc/customerClient");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -11,7 +14,7 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
-const registerCustomer = async ({ phone, email, password }) => {
+async function registerCustomer({ phone, email, password }) {
   const existingUser = await prisma.user.findFirst({
     where: {
       OR: [{ phone }, { email }],
@@ -19,7 +22,7 @@ const registerCustomer = async ({ phone, email, password }) => {
   });
 
   if (existingUser) {
-    throw new Error("Phone or email already exists");
+    throw new Error("USER_ALREADY_EXISTS");
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -32,20 +35,31 @@ const registerCustomer = async ({ phone, email, password }) => {
       role: "CUSTOMER",
       status: "ACTIVE",
     },
-    select: {
-      id: true,
-      phone: true,
-      email: true,
-      role: true,
-      status: true,
-      createdAt: true,
-    },
   });
 
-  return user;
-};
+  try {
+    await createCustomer(user.id);
+  } catch (error) {
+    await prisma.user.delete({
+      where: {
+        id: user.id,
+      },
+    });
 
-const loginCustomer = async ({ identifier, password }) => {
+    throw new Error("CUSTOMER_CREATION_FAILED");
+  }
+
+  return {
+    id: user.id,
+    phone: user.phone,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    createdAt: user.createdAt,
+  };
+}
+
+async function loginCustomer({ identifier, password }) {
   const user = await prisma.user.findFirst({
     where: {
       OR: [{ phone: identifier }, { email: identifier }],
@@ -53,17 +67,17 @@ const loginCustomer = async ({ identifier, password }) => {
   });
 
   if (!user) {
-    throw new Error("Invalid credentials");
+    throw new Error("INVALID_CREDENTIALS");
   }
 
   if (user.status !== "ACTIVE") {
-    throw new Error("Account is not active");
+    throw new Error("USER_INACTIVE");
   }
 
   const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
   if (!passwordMatch) {
-    throw new Error("Invalid credentials");
+    throw new Error("INVALID_CREDENTIALS");
   }
 
   const accessToken = jwt.sign(
@@ -85,7 +99,7 @@ const loginCustomer = async ({ identifier, password }) => {
     status: user.status,
     accessToken,
   };
-};
+}
 
 module.exports = {
   registerCustomer,

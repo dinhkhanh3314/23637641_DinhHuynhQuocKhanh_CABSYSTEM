@@ -20,21 +20,22 @@ router.post("/register", async (req, res) => {
       password,
     });
 
-    res.status(201).json({
-      message: "Customer registered successfully",
-      user,
-    });
+    res.status(201).json(user);
   } catch (error) {
-    if (error.message === "Phone or email already exists") {
+    if (error.message === "USER_ALREADY_EXISTS") {
       return res.status(409).json({
-        message: error.message,
+        message: "User already exists",
       });
     }
 
-    console.error(error);
+    if (error.message === "CUSTOMER_CREATION_FAILED") {
+      return res.status(503).json({
+        message: "Customer Service is unavailable",
+      });
+    }
 
     res.status(500).json({
-      message: "Internal server error",
+      message: "Registration failed",
     });
   }
 });
@@ -49,32 +50,27 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const result = await loginCustomer({
+    const user = await loginCustomer({
       identifier,
       password,
     });
 
-    res.status(200).json({
-      message: "Login successful",
-      ...result,
-    });
+    res.json(user);
   } catch (error) {
-    if (error.message === "Invalid credentials") {
+    if (error.message === "INVALID_CREDENTIALS") {
       return res.status(401).json({
-        message: error.message,
+        message: "Invalid credentials",
       });
     }
 
-    if (error.message === "Account is not active") {
+    if (error.message === "USER_INACTIVE") {
       return res.status(403).json({
-        message: error.message,
+        message: "User is inactive",
       });
     }
-
-    console.error(error);
 
     res.status(500).json({
-      message: "Internal server error",
+      message: "Login failed",
     });
   }
 });

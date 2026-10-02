@@ -30,10 +30,12 @@ async function createCustomer({ userId, fullName, dateOfBirth, gender }) {
 
 async function updateCustomer(userId, data) {
   return prisma.customer.update({
-    where: {
-      userId,
+    where: { userId },
+    data: {
+      fullName: data.fullName,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      gender: data.gender,
     },
-    data,
   });
 }
 
