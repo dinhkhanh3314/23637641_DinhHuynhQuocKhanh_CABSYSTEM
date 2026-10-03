@@ -201,6 +201,12 @@ router.post("/driver/set-password", async (req, res) => {
 
     res.json(result);
   } catch (error) {
+    if (error.message === "PHONE_NOT_VERIFIED") {
+      return res.status(400).json({
+        message: "Vui lòng xác thực OTP trước khi đặt mật khẩu",
+      });
+    }
+
     if (error.message === "USER_NOT_FOUND") {
       return res.status(404).json({
         message: "Không tìm thấy tài khoản",

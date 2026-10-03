@@ -10,7 +10,7 @@ model User {
   id Int @id @default(autoincrement())
   phone        String?  @unique @db.VarChar(20)
   email        String?  @unique @db.VarChar(255)
-  passwordHash String?  @map("password_hash")
+  passwordHash String? @map("password_hash")
   role         String   @db.VarChar(20)
   status       String   @default("ACTIVE") @db.VarChar(20)
   createdAt    DateTime @default(now()) @map("created_at")

@@ -134,11 +134,41 @@ async function setDriverPassword(phone, password) {
   };
 }
 
+async function getOnlineDrivers() {
+  const keys = await redisClient.keys("driver:status:*");
+
+  const onlineDrivers = [];
+
+  for (const key of keys) {
+    const status = await redisClient.get(key);
+
+    if (status === "ONLINE") {
+      const driverId = key.replace("driver:status:", "");
+
+      onlineDrivers.push(Number(driverId));
+    }
+  }
+  return onlineDrivers;
+}
+
+async function getDrivers() {
+  return prisma.driver.findMany({
+    include: {
+      vehicle: true,
+      application: true,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+}
+
 module.exports = {
   createDriver,
   getDriver,
+  getDrivers,
   updateDriver,
   goOnline,
   goOffline,
-  setDriverPassword,
+  getOnlineDrivers,
 };

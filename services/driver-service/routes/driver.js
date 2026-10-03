@@ -9,6 +9,7 @@ const {
   updateVehicle,
   goOnline,
   goOffline,
+  getOnlineDrivers,
 } = require("../services/driverService");
 
 router.post("/", async (req, res) => {
@@ -19,6 +20,22 @@ router.post("/", async (req, res) => {
     console.error(error);
     res.status(500).json({
       message: "Không thể tạo hồ sơ tài xế",
+    });
+  }
+});
+
+router.get("/online", async (req, res) => {
+  try {
+    const drivers = await getOnlineDrivers();
+
+    res.json({
+      drivers,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể lấy danh sách tài xế đang online",
     });
   }
 });

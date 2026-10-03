@@ -209,6 +209,12 @@ async function registerDriver(data) {
 }
 
 async function setDriverPassword(phone, password) {
+  const verified = await redisClient.get(`driver:otp:verified:${phone}`);
+
+  if (verified !== "true") {
+    throw new Error("PHONE_NOT_VERIFIED");
+  }
+
   const user = await prisma.user.findUnique({
     where: { phone },
   });
@@ -233,6 +239,8 @@ async function setDriverPassword(phone, password) {
       passwordHash,
     },
   });
+
+  await redisClient.del(`driver:otp:verified:${phone}`);
 
   return {
     message: "Đặt mật khẩu thành công",
