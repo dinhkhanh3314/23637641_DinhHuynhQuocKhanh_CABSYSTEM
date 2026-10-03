@@ -5,6 +5,7 @@ const {
   getApplication,
   approveApplication,
   rejectApplication,
+  resubmitApplication,
 } = require("../services/applicationService");
 
 const router = express.Router();
@@ -104,6 +105,32 @@ router.get("/:id", async (req, res) => {
 
     res.status(500).json({
       message: "Không thể lấy thông tin hồ sơ",
+    });
+  }
+});
+
+router.put("/:id/resubmit", async (req, res) => {
+  try {
+    const result = await resubmitApplication(Number(req.params.id), req.body);
+
+    res.json(result);
+  } catch (error) {
+    if (error.message === "APPLICATION_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Không tìm thấy đơn đăng ký",
+      });
+    }
+
+    if (error.message === "APPLICATION_NOT_REJECTED") {
+      return res.status(400).json({
+        message: "Đơn đăng ký chưa bị từ chối",
+      });
+    }
+
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể gửi lại đơn đăng ký",
     });
   }
 });

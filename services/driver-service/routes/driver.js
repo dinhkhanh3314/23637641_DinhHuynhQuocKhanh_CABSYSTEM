@@ -4,12 +4,16 @@ const router = express.Router();
 const {
   createDriver,
   getDriver,
+  getDrivers,
   updateDriver,
   createVehicle,
   updateVehicle,
   goOnline,
   goOffline,
   getOnlineDrivers,
+  updateDriverLocation,
+  getDriverLocation,
+  getNearbyDrivers,
 } = require("../services/driverService");
 
 router.post("/", async (req, res) => {
@@ -36,6 +40,114 @@ router.get("/online", async (req, res) => {
 
     res.status(500).json({
       message: "Không thể lấy danh sách tài xế đang online",
+    });
+  }
+});
+
+router.get("/", async (req, res) => {
+  try {
+    const drivers = await getDrivers();
+
+    res.json({
+      drivers,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể lấy danh sách tài xế",
+    });
+  }
+});
+
+router.put("/:id/location", async (req, res) => {
+  try {
+    const { longitude, latitude } = req.body;
+
+    if (longitude === undefined || latitude === undefined) {
+      return res.status(400).json({
+        message: "Vui lòng nhập longitude và latitude",
+      });
+    }
+
+    const result = await updateDriverLocation(
+      Number(req.params.id),
+      longitude,
+      latitude,
+    );
+
+    res.json(result);
+  } catch (error) {
+    if (error.message === "DRIVER_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Không tìm thấy tài xế",
+      });
+    }
+
+    if (error.message === "DRIVER_NOT_ONLINE") {
+      return res.status(400).json({
+        message: "Tài xế chưa online",
+      });
+    }
+
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể cập nhật vị trí tài xế",
+    });
+  }
+});
+
+router.get("/:id/location", async (req, res) => {
+  try {
+    const result = await getDriverLocation(Number(req.params.id));
+
+    res.json(result);
+  } catch (error) {
+    if (error.message === "DRIVER_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Không tìm thấy tài xế",
+      });
+    }
+
+    if (error.message === "LOCATION_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Tài xế chưa có vị trí",
+      });
+    }
+
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể lấy vị trí tài xế",
+    });
+  }
+});
+
+router.get("/nearby", async (req, res) => {
+  try {
+    const { longitude, latitude, radius } = req.query;
+
+    if (
+      longitude === undefined ||
+      latitude === undefined ||
+      radius === undefined
+    ) {
+      return res.status(400).json({
+        message: "Vui lòng nhập longitude, latitude và radius",
+      });
+    }
+
+    const drivers = await getNearbyDrivers(longitude, latitude, radius);
+
+    res.json({
+      drivers,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể tìm tài xế gần vị trí",
     });
   }
 });

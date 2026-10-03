@@ -103,37 +103,6 @@ async function goOffline(driverId) {
   };
 }
 
-async function setDriverPassword(phone, password) {
-  const user = await prisma.user.findUnique({
-    where: { phone },
-  });
-
-  if (!user) {
-    throw new Error("USER_NOT_FOUND");
-  }
-
-  if (user.role !== "DRIVER") {
-    throw new Error("NOT_DRIVER");
-  }
-
-  if (user.passwordHash) {
-    throw new Error("PASSWORD_ALREADY_SET");
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      passwordHash,
-    },
-  });
-
-  return {
-    message: "Đặt mật khẩu thành công",
-  };
-}
-
 async function getOnlineDrivers() {
   const keys = await redisClient.keys("driver:status:*");
 
@@ -163,6 +132,91 @@ async function getDrivers() {
   });
 }
 
+async function updateDriverLocation(driverId, longitude, latitude) {
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+  });
+
+  if (!driver) {
+    throw new Error("DRIVER_NOT_FOUND");
+  }
+
+  const status = await redisClient.get(`driver:status:${driverId}`);
+
+  if (status !== "ONLINE") {
+    throw new Error("DRIVER_NOT_ONLINE");
+  }
+
+  await redisClient.geoAdd("driver:locations", {
+    longitude: Number(longitude),
+    latitude: Number(latitude),
+    member: String(driverId),
+  });
+
+  return {
+    driverId,
+    longitude: Number(longitude),
+    latitude: Number(latitude),
+  };
+}
+
+async function getDriverLocation(driverId) {
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+  });
+
+  if (!driver) {
+    throw new Error("DRIVER_NOT_FOUND");
+  }
+
+  const location = await redisClient.geoPos(
+    "driver:locations",
+    String(driverId),
+  );
+
+  if (!location || !location[0]) {
+    throw new Error("LOCATION_NOT_FOUND");
+  }
+
+  return {
+    driverId,
+    longitude: Number(location[0].longitude),
+    latitude: Number(location[0].latitude),
+  };
+}
+
+async function getNearbyDrivers(longitude, latitude, radius) {
+  const results = await redisClient.geoSearchWith(
+    "driver:locations",
+    {
+      longitude: Number(longitude),
+      latitude: Number(latitude),
+    },
+    {
+      radius: Number(radius),
+      unit: "km",
+    },
+    ["WITHDIST"],
+  );
+
+  const onlineDrivers = [];
+
+  for (const item of results) {
+    const driverId = Number(item.member);
+
+    const status = await redisClient.get(`driver:status:${driverId}`);
+
+    if (status === "ONLINE") {
+      onlineDrivers.push({
+        driverId,
+        distance: Number(item.distance),
+      });
+    }
+  }
+
+  return onlineDrivers;
+}
+
 module.exports = {
   createDriver,
   getDriver,
@@ -171,4 +225,7 @@ module.exports = {
   goOnline,
   goOffline,
   getOnlineDrivers,
+  updateDriverLocation,
+  getDriverLocation,
+  getNearbyDrivers,
 };
