@@ -1,0 +1,27 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Booking {
+  id                  Int      @id @default(autoincrement())
+  customerId          Int      @map("customer_id")
+  driverId            Int?     @map("driver_id")
+
+  pickupLatitude      Decimal  @map("pickup_latitude") @db.Decimal(10, 7)
+  pickupLongitude     Decimal  @map("pickup_longitude") @db.Decimal(10, 7)
+
+  destinationLatitude  Decimal  @map("destination_latitude") @db.Decimal(10, 7)
+  destinationLongitude Decimal  @map("destination_longitude") @db.Decimal(10, 7)
+
+  vehicleType         String   @map("vehicle_type") @db.VarChar(30)
+  status              String   @default("PENDING") @db.VarChar(30)
+
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("booking")
+}
