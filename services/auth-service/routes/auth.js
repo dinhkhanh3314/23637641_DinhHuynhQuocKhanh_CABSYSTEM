@@ -70,6 +70,12 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    if (error.message === "PASSWORD_NOT_SET") {
+      return res.status(400).json({
+        message: "Tài khoản chưa được đặt mật khẩu",
+      });
+    }
+
     if (error.message === "USER_INACTIVE") {
       return res.status(403).json({
         message: "User is inactive",

@@ -101,6 +101,10 @@ async function loginCustomer({ identifier, password }) {
     throw new Error("INVALID_CREDENTIALS");
   }
 
+  if (!user.passwordHash) {
+    throw new Error("PASSWORD_NOT_SET");
+  }
+
   if (user.status !== "ACTIVE") {
     throw new Error("USER_INACTIVE");
   }
