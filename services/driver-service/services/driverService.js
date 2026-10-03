@@ -1,5 +1,6 @@
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
+const redisClient = require("../redisClient");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -61,8 +62,83 @@ async function updateDriver(id, data) {
   });
 }
 
+async function goOnline(driverId) {
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+    include: {
+      application: true,
+    },
+  });
+
+  if (!driver) {
+    throw new Error("DRIVER_NOT_FOUND");
+  }
+
+  if (!driver.application || driver.application.status !== "APPROVED") {
+    throw new Error("DRIVER_NOT_APPROVED");
+  }
+
+  await redisClient.set(`driver:status:${driverId}`, "ONLINE");
+
+  return {
+    driverId,
+    status: "ONLINE",
+  };
+}
+
+async function goOffline(driverId) {
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+  });
+
+  if (!driver) {
+    throw new Error("DRIVER_NOT_FOUND");
+  }
+
+  await redisClient.set(`driver:status:${driverId}`, "OFFLINE");
+
+  return {
+    driverId,
+    status: "OFFLINE",
+  };
+}
+
+async function setDriverPassword(phone, password) {
+  const user = await prisma.user.findUnique({
+    where: { phone },
+  });
+
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  if (user.role !== "DRIVER") {
+    throw new Error("NOT_DRIVER");
+  }
+
+  if (user.passwordHash) {
+    throw new Error("PASSWORD_ALREADY_SET");
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash,
+    },
+  });
+
+  return {
+    message: "Đặt mật khẩu thành công",
+  };
+}
+
 module.exports = {
   createDriver,
   getDriver,
   updateDriver,
+  goOnline,
+  goOffline,
+  setDriverPassword,
 };

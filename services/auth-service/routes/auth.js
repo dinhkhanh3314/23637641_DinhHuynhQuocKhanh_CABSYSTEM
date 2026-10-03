@@ -6,7 +6,9 @@ const {
   registerDriver,
   sendDriverOtp,
   verifyDriverOtp,
+  setDriverPassword,
 } = require("../services/authService");
+
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
@@ -169,6 +171,52 @@ router.post("/driver/register", async (req, res) => {
 
     return res.status(400).json({
       message: error.message,
+    });
+  }
+});
+
+router.post("/driver/set-password", async (req, res) => {
+  try {
+    const { phone, password } = req.body;
+
+    if (!phone || !password) {
+      return res.status(400).json({
+        message: "Vui lòng nhập số điện thoại và mật khẩu",
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        message: "Mật khẩu phải có ít nhất 6 ký tự",
+      });
+    }
+
+    const result = await setDriverPassword(phone, password);
+
+    res.json(result);
+  } catch (error) {
+    if (error.message === "USER_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Không tìm thấy tài khoản",
+      });
+    }
+
+    if (error.message === "NOT_DRIVER") {
+      return res.status(400).json({
+        message: "Tài khoản không phải tài xế",
+      });
+    }
+
+    if (error.message === "PASSWORD_ALREADY_SET") {
+      return res.status(400).json({
+        message: "Tài khoản đã có mật khẩu",
+      });
+    }
+
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể đặt mật khẩu",
     });
   }
 });

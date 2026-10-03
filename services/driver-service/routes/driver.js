@@ -7,6 +7,8 @@ const {
   updateDriver,
   createVehicle,
   updateVehicle,
+  goOnline,
+  goOffline,
 } = require("../services/driverService");
 
 router.post("/", async (req, res) => {
@@ -81,6 +83,58 @@ router.put("/:id/vehicle", async (req, res) => {
     console.error(error);
     res.status(500).json({
       message: "Không thể cập nhật thông tin xe",
+    });
+  }
+});
+
+router.put("/:id/online", async (req, res) => {
+  try {
+    const driver = await goOnline(Number(req.params.id));
+
+    res.json({
+      message: "Tài xế đã Online",
+      ...driver,
+    });
+  } catch (error) {
+    if (error.message === "DRIVER_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Không tìm thấy tài xế",
+      });
+    }
+
+    if (error.message === "DRIVER_NOT_APPROVED") {
+      return res.status(400).json({
+        message: "Tài xế chưa được duyệt hồ sơ",
+      });
+    }
+
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể chuyển tài xế sang Online",
+    });
+  }
+});
+
+router.put("/:id/offline", async (req, res) => {
+  try {
+    const driver = await goOffline(Number(req.params.id));
+
+    res.json({
+      message: "Tài xế đã Offline",
+      ...driver,
+    });
+  } catch (error) {
+    if (error.message === "DRIVER_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Không tìm thấy tài xế",
+      });
+    }
+
+    console.error(error);
+
+    res.status(500).json({
+      message: "Không thể chuyển tài xế sang Offline",
     });
   }
 });

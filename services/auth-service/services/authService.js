@@ -136,7 +136,6 @@ async function registerDriver(data) {
   const {
     phone,
     email,
-    password,
     fullName,
     licenseNo,
     vehicleType,
@@ -162,13 +161,11 @@ async function registerDriver(data) {
     throw new Error("USER_ALREADY_EXISTS");
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
-
   const user = await prisma.user.create({
     data: {
       phone,
       email,
-      passwordHash,
+      passwordHash: null,
       role: "DRIVER",
       status: "ACTIVE",
     },
@@ -207,10 +204,42 @@ async function registerDriver(data) {
   }
 }
 
+async function setDriverPassword(phone, password) {
+  const user = await prisma.user.findUnique({
+    where: { phone },
+  });
+
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  if (user.role !== "DRIVER") {
+    throw new Error("NOT_DRIVER");
+  }
+
+  if (user.passwordHash) {
+    throw new Error("PASSWORD_ALREADY_SET");
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash,
+    },
+  });
+
+  return {
+    message: "Đặt mật khẩu thành công",
+  };
+}
+
 module.exports = {
   registerCustomer,
   loginCustomer,
   registerDriver,
   sendDriverOtp,
   verifyDriverOtp,
+  setDriverPassword,
 };
