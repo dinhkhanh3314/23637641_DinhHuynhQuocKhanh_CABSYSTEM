@@ -138,7 +138,7 @@ router.get("/nearby", async (req, res) => {
       });
     }
 
-    const drivers = await getNearbyDrivers(longitude, latitude, radius);
+    const drivers = await getNearbyDrivers(latitude, longitude, radius);
 
     res.json({
       drivers,

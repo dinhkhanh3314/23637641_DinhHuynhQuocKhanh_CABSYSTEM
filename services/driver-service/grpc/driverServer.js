@@ -2,7 +2,7 @@ const grpc = require("@grpc/grpc-js");
 const protoLoader = require("@grpc/proto-loader");
 const path = require("path");
 
-const { createDriver } = require("../services/driverService");
+const { createDriver, getNearbyDrivers } = require("../services/driverService");
 
 const PROTO_PATH = path.join(__dirname, "../../../contracts/grpc/driver.proto");
 
@@ -52,6 +52,37 @@ function startDriverGrpcServer() {
 
   server.addService(driverProto.DriverService.service, {
     CreateDriver: createDriverHandler,
+
+    GetNearbyDrivers: async (call, callback) => {
+      try {
+        const { latitude, longitude, radius } = call.request;
+
+        const drivers = await getNearbyDrivers(
+          latitude,
+          longitude,
+          radius || 1000,
+        );
+
+        callback(null, {
+          drivers: drivers.map((driver) => ({
+            id: driver.id,
+            user_id: driver.userId,
+            full_name: driver.fullName,
+            phone: driver.phone || "",
+            status: driver.status,
+            latitude: driver.latitude,
+            longitude: driver.longitude,
+          })),
+        });
+      } catch (error) {
+        console.error("Get nearby drivers gRPC error:", error);
+
+        callback({
+          code: grpc.status.INTERNAL,
+          message: "Không thể tìm tài xế gần",
+        });
+      }
+    },
   });
 
   server.bindAsync(

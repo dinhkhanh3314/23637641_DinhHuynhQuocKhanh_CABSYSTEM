@@ -19,9 +19,20 @@ model Booking {
 
   vehicleType         String   @map("vehicle_type") @db.VarChar(30)
   status              String   @default("PENDING") @db.VarChar(30)
+  cancelReason String? @map("cancel_reason") @db.VarChar(255)
 
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   @@map("booking")
+}
+
+model BookingDriverAttempt {
+  id        Int      @id @default(autoincrement())
+  bookingId Int      @map("booking_id")
+  driverId  Int      @map("driver_id")
+  status    String   @db.VarChar(20)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("booking_driver_attempt")
 }

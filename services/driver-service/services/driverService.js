@@ -185,7 +185,7 @@ async function getDriverLocation(driverId) {
   };
 }
 
-async function getNearbyDrivers(longitude, latitude, radius) {
+async function getNearbyDrivers(latitude, longitude, radius) {
   const results = await redisClient.geoSearchWith(
     "driver:locations",
     {
@@ -196,7 +196,7 @@ async function getNearbyDrivers(longitude, latitude, radius) {
       radius: Number(radius),
       unit: "km",
     },
-    ["WITHDIST"],
+    ["WITHDIST", "WITHCOORD"],
   );
 
   const onlineDrivers = [];
@@ -207,10 +207,24 @@ async function getNearbyDrivers(longitude, latitude, radius) {
     const status = await redisClient.get(`driver:status:${driverId}`);
 
     if (status === "ONLINE") {
-      onlineDrivers.push({
-        driverId,
-        distance: Number(item.distance),
+      const driver = await prisma.driver.findUnique({
+        where: {
+          id: driverId,
+        },
       });
+
+      if (driver) {
+        onlineDrivers.push({
+          id: driver.id,
+          userId: driver.userId,
+          fullName: driver.fullName,
+          phone: driver.phone,
+          status: driver.status,
+          latitude: Number(item.coordinates.latitude),
+          longitude: Number(item.coordinates.longitude),
+          distance: Number(item.distance),
+        });
+      }
     }
   }
 

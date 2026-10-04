@@ -1,5 +1,6 @@
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
+const { getNearbyDrivers } = require("../grpc/driverClient");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -19,21 +20,19 @@ async function createBooking(data) {
     throw new Error("MISSING_BOOKING_DATA");
   }
 
-  return prisma.booking.create({
+  const booking = await prisma.booking.create({
     data: {
       customerId: Number(data.customerId),
-
       pickupLatitude: data.pickupLatitude,
       pickupLongitude: data.pickupLongitude,
-
       destinationLatitude: data.destinationLatitude,
       destinationLongitude: data.destinationLongitude,
-
       vehicleType: data.vehicleType,
-
-      status: "PENDING",
+      status: "SEARCHING_DRIVER",
     },
   });
+
+  return findAndAssignNextDriver(booking.id);
 }
 
 async function getBooking(id) {
@@ -87,7 +86,7 @@ async function updateBookingStatus(id, status) {
   });
 }
 
-async function cancelBooking(id) {
+async function cancelBooking(id, cancelReason) {
   const booking = await prisma.booking.findUnique({
     where: {
       id: Number(id),
@@ -98,15 +97,19 @@ async function cancelBooking(id) {
     throw new Error("BOOKING_NOT_FOUND");
   }
 
-  const cancellableStatuses = [
-    "PENDING",
-    "SEARCHING_DRIVER",
-    "DRIVER_ASSIGNED",
-    "DRIVER_ACCEPTED",
-  ];
-
-  if (!cancellableStatuses.includes(booking.status)) {
+  if (
+    ![
+      "PENDING",
+      "SEARCHING_DRIVER",
+      "DRIVER_ASSIGNED",
+      "DRIVER_ACCEPTED",
+    ].includes(booking.status)
+  ) {
     throw new Error("BOOKING_CANNOT_CANCEL");
+  }
+
+  if (!cancelReason || !cancelReason.trim()) {
+    throw new Error("CANCEL_REASON_REQUIRED");
   }
 
   return prisma.booking.update({
@@ -115,45 +118,7 @@ async function cancelBooking(id) {
     },
     data: {
       status: "CANCELLED",
-    },
-  });
-}
-
-async function findNearbyDrivers(latitude, longitude, radius = 1000) {
-  return {
-    latitude,
-    longitude,
-    radius,
-    drivers: [],
-  };
-}
-
-async function assignDriver(id, driverId) {
-  const booking = await prisma.booking.findUnique({
-    where: {
-      id: Number(id),
-    },
-  });
-
-  if (!booking) {
-    throw new Error("BOOKING_NOT_FOUND");
-  }
-
-  if (!driverId) {
-    throw new Error("DRIVER_ID_REQUIRED");
-  }
-
-  if (booking.status !== "SEARCHING_DRIVER") {
-    throw new Error("BOOKING_NOT_SEARCHING_DRIVER");
-  }
-
-  return prisma.booking.update({
-    where: {
-      id: Number(id),
-    },
-    data: {
-      driverId: Number(driverId),
-      status: "DRIVER_ASSIGNED",
+      cancelReason: cancelReason.trim(),
     },
   });
 }
@@ -183,31 +148,6 @@ async function acceptBooking(id) {
   });
 }
 
-async function startSearchingDriver(id) {
-  const booking = await prisma.booking.findUnique({
-    where: {
-      id: Number(id),
-    },
-  });
-
-  if (!booking) {
-    throw new Error("BOOKING_NOT_FOUND");
-  }
-
-  if (booking.status !== "PENDING") {
-    throw new Error("BOOKING_NOT_PENDING");
-  }
-
-  return prisma.booking.update({
-    where: {
-      id: Number(id),
-    },
-    data: {
-      status: "SEARCHING_DRIVER",
-    },
-  });
-}
-
 async function rejectBooking(id) {
   const booking = await prisma.booking.findUnique({
     where: {
@@ -223,15 +163,18 @@ async function rejectBooking(id) {
     throw new Error("BOOKING_NOT_ASSIGNED");
   }
 
-  return prisma.booking.update({
+  await prisma.bookingDriverAttempt.updateMany({
     where: {
-      id: Number(id),
+      bookingId: Number(id),
+      driverId: booking.driverId,
+      status: "ASSIGNED",
     },
     data: {
-      driverId: null,
-      status: "SEARCHING_DRIVER",
+      status: "REJECTED",
     },
   });
+
+  return findAndAssignNextDriver(id);
 }
 
 async function timeoutBooking(id) {
@@ -246,18 +189,125 @@ async function timeoutBooking(id) {
   }
 
   if (booking.status !== "DRIVER_ASSIGNED") {
-    throw new Error("BOOKING_NOT_ASSIGNED");
+    return booking;
   }
 
-  return prisma.booking.update({
+  await prisma.bookingDriverAttempt.updateMany({
     where: {
-      id: Number(id),
+      bookingId: Number(id),
+      driverId: booking.driverId,
+      status: "ASSIGNED",
     },
     data: {
-      driverId: null,
-      status: "SEARCHING_DRIVER",
+      status: "TIMEOUT",
     },
   });
+
+  return findAndAssignNextDriver(id);
+}
+
+function startDriverTimeout(bookingId) {
+  setTimeout(async () => {
+    try {
+      const booking = await prisma.booking.findUnique({
+        where: {
+          id: Number(bookingId),
+        },
+      });
+
+      if (!booking) {
+        return;
+      }
+      if (booking.status !== "DRIVER_ASSIGNED") {
+        return;
+      }
+
+      console.log(`Booking ${bookingId}: tài xế timeout, tìm tài xế khác`);
+
+      await timeoutBooking(bookingId);
+    } catch (error) {
+      console.error(`Booking ${bookingId}: timeout error`, error);
+    }
+  }, 60000);
+}
+
+async function findAndAssignNextDriver(bookingId) {
+  const booking = await prisma.booking.findUnique({
+    where: {
+      id: Number(bookingId),
+    },
+  });
+
+  if (!booking) {
+    throw new Error("BOOKING_NOT_FOUND");
+  }
+
+  const drivers = await getNearbyDrivers(
+    Number(booking.pickupLatitude),
+    Number(booking.pickupLongitude),
+    1,
+  );
+
+  if (drivers.length === 0) {
+    return prisma.booking.update({
+      where: {
+        id: Number(bookingId),
+      },
+      data: {
+        driverId: null,
+        status: "NO_DRIVER",
+      },
+    });
+  }
+
+  const attempts = await prisma.bookingDriverAttempt.findMany({
+    where: {
+      bookingId: Number(bookingId),
+    },
+    select: {
+      driverId: true,
+    },
+  });
+
+  const triedDriverIds = new Set(attempts.map((attempt) => attempt.driverId));
+
+  const nextDriver = drivers.find(
+    (driver) => !triedDriverIds.has(Number(driver.id)),
+  );
+
+  if (!nextDriver) {
+    return prisma.booking.update({
+      where: {
+        id: Number(bookingId),
+      },
+      data: {
+        driverId: null,
+        status: "NO_DRIVER",
+      },
+    });
+  }
+
+  const result = await prisma.booking.update({
+    where: {
+      id: Number(bookingId),
+    },
+    data: {
+      driverId: Number(nextDriver.id),
+      status: "DRIVER_ASSIGNED",
+    },
+  });
+
+  await prisma.bookingDriverAttempt.create({
+    data: {
+      bookingId: Number(bookingId),
+      driverId: Number(nextDriver.id),
+      status: "ASSIGNED",
+    },
+  });
+
+  startDriverTimeout(bookingId);
+
+  return result;
 }
 
 module.exports = {
@@ -266,10 +316,8 @@ module.exports = {
   getBookings,
   updateBookingStatus,
   cancelBooking,
-  findNearbyDrivers,
-  assignDriver,
   acceptBooking,
   rejectBooking,
-  startSearchingDriver,
-  timeoutBooking,
+  startDriverTimeout,
+  findAndAssignNextDriver,
 };
