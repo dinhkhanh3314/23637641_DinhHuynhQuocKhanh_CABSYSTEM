@@ -5,32 +5,24 @@ const app = express();
 app.use(express.json());
 
 app.post("/payments", (req, res) => {
-  const { paymentId, amount } = req.body;
+  const { paymentId, amount, paymentMethod } = req.body;
+
+  if (!paymentId || !amount || !paymentMethod) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Thông tin thanh toán không hợp lệ",
+    });
+  }
 
   res.json({
-    paymentId,
-    amount,
     status: "SUCCESS",
-    message: "Payment processed successfully",
+    transactionId: `TXN-${paymentId}-${Date.now()}`,
+    message: "Thanh toán thành công",
   });
 });
 
-app.post("/payments/callback", (req, res) => {
-  const { paymentId, status } = req.body;
+const PORT = 4000;
 
-  res.json({
-    paymentId,
-    status,
-    message: "Callback received",
-  });
-});
-
-app.get("/health", (req, res) => {
-  res.json({
-    status: "UP",
-  });
-});
-
-app.listen(4000, () => {
-  console.log("Mock Payment Provider running on port 4000");
+app.listen(PORT, () => {
+  console.log(`Mock Payment Provider running on port ${PORT}`);
 });
