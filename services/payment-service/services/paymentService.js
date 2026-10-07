@@ -11,9 +11,30 @@ const prisma = new PrismaClient({
 });
 
 async function createPayment(data) {
+  const tripId = Number(data.tripId);
+  const customerId = Number(data.customerId);
+  const amount = Number(data.amount);
+  const paymentMethod = data.paymentMethod;
+
+  if (!Number.isInteger(tripId) || tripId <= 0) {
+    throw new Error("INVALID_TRIP_ID");
+  }
+
+  if (!Number.isInteger(customerId) || customerId <= 0) {
+    throw new Error("INVALID_CUSTOMER_ID");
+  }
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("INVALID_AMOUNT");
+  }
+
+  if (!paymentMethod) {
+    throw new Error("INVALID_PAYMENT_METHOD");
+  }
+
   const existingPayment = await prisma.payment.findUnique({
     where: {
-      tripId: Number(data.tripId),
+      tripId,
     },
   });
 
@@ -23,10 +44,10 @@ async function createPayment(data) {
 
   const payment = await prisma.payment.create({
     data: {
-      tripId: Number(data.tripId),
-      customerId: Number(data.customerId),
-      amount: Number(data.amount),
-      paymentMethod: data.paymentMethod,
+      tripId,
+      customerId,
+      amount,
+      paymentMethod,
       status: "PENDING",
     },
   });

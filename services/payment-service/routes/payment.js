@@ -25,6 +25,30 @@ router.post("/", async (req, res) => {
       });
     }
 
+    if (error.message === "INVALID_TRIP_ID") {
+      return res.status(400).json({
+        message: "tripId phải là số nguyên lớn hơn 0",
+      });
+    }
+
+    if (error.message === "INVALID_CUSTOMER_ID") {
+      return res.status(400).json({
+        message: "customerId phải là số nguyên lớn hơn 0",
+      });
+    }
+
+    if (error.message === "INVALID_AMOUNT") {
+      return res.status(400).json({
+        message: "Số tiền thanh toán phải lớn hơn 0",
+      });
+    }
+
+    if (error.message === "INVALID_PAYMENT_METHOD") {
+      return res.status(400).json({
+        message: "Phương thức thanh toán không được để trống",
+      });
+    }
+
     res.status(500).json({
       message: "Không thể tạo payment",
     });
@@ -36,7 +60,10 @@ router.put("/:id/process", async (req, res) => {
     const payment = await processPayment(req.params.id);
 
     res.json({
-      message: "Xử lý thanh toán thành công",
+      message:
+        payment.status === "PAID"
+          ? "Thanh toán thành công"
+          : "Thanh toán thất bại",
       payment,
     });
   } catch (error) {

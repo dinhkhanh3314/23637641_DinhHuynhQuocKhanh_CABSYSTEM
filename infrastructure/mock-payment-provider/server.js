@@ -14,6 +14,13 @@ app.post("/payments", (req, res) => {
     });
   }
 
+  if (paymentMethod === "FAIL") {
+    return res.json({
+      status: "FAILED",
+      message: "Thanh toán bị từ chối",
+    });
+  }
+
   res.json({
     status: "SUCCESS",
     transactionId: `TXN-${paymentId}-${Date.now()}`,
