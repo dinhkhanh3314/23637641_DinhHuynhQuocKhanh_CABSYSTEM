@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const connectDatabase = require("./config/database");
 const tripRoutes = require("./routes/trip");
+const startTripGrpcServer = require("./grpc/tripServer");
 
 const app = express();
 
@@ -24,6 +25,8 @@ async function startServer() {
   app.listen(PORT, () => {
     console.log(`Trip Service running on port ${PORT}`);
   });
+
+  startTripGrpcServer();
 }
 
 startServer();

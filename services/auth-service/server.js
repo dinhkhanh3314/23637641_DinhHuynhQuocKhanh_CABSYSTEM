@@ -5,6 +5,7 @@ const express = require("express");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
 const authRoutes = require("./routes/auth");
+const { startAuthGrpcServer } = require("./grpc/authServer");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -45,6 +46,8 @@ redisClient
     app.listen(PORT, () => {
       console.log(`Auth Service running on port ${PORT}`);
     });
+
+    startAuthGrpcServer();
   })
   .catch((error) => {
     console.error("Redis connection failed:", error);

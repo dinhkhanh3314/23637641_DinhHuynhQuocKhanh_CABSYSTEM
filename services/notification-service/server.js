@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const connectDatabase = require("./config/database");
 const notificationRoutes = require("./routes/notification");
+const { startNotificationGrpcServer } = require("./grpc/notificationServer");
 
 const app = express();
 
@@ -25,6 +26,8 @@ async function startServer() {
   app.listen(PORT, () => {
     console.log(`Notification Service running on port ${PORT}`);
   });
+
+  startNotificationGrpcServer();
 }
 
 startServer();

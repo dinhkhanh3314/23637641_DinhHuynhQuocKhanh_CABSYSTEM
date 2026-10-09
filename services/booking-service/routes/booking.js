@@ -160,6 +160,12 @@ router.put("/:id/accept", async (req, res) => {
       });
     }
 
+    if (error.message === "TRIP_CREATION_FAILED") {
+      return res.status(503).json({
+        message: "Không thể tạo chuyến đi",
+      });
+    }
+
     res.status(500).json({
       message: "Không thể xác nhận tài xế nhận chuyến",
     });

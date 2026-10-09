@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthService {
+  rpc RegisterCustomer (RegisterCustomerRequest) returns (UserResponse);
+  rpc LoginCustomer (LoginRequest) returns (LoginResponse);
+  rpc SendDriverOtp (SendDriverOtpRequest) returns (SendDriverOtpResponse);
+  rpc VerifyDriverOtp (VerifyDriverOtpRequest) returns (MessageResponse);
+  rpc RegisterDriver (RegisterDriverRequest) returns (RegisterDriverResponse);
+  rpc SetDriverPassword (SetDriverPasswordRequest) returns (MessageResponse);
+}
+
+message RegisterCustomerRequest {
+  string phone = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message UserResponse {
+  int32 id = 1;
+  string phone = 2;
+  string email = 3;
+  string role = 4;
+  string status = 5;
+  string created_at = 6;
+}
+
+message LoginRequest {
+  string identifier = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  int32 id = 1;
+  string phone = 2;
+  string email = 3;
+  string role = 4;
+  string status = 5;
+  string access_token = 6;
+}
+
+message SendDriverOtpRequest {
+  string phone = 1;
+}
+
+message SendDriverOtpResponse {
+  string message = 1;
+  string otp = 2;
+}
+
+message VerifyDriverOtpRequest {
+  string phone = 1;
+  string otp = 2;
+}
+
+message MessageResponse {
+  string message = 1;
+}
+
+message RegisterDriverRequest {
+  string phone = 1;
+  string email = 2;
+  string full_name = 3;
+  string license_no = 4;
+  string vehicle_type = 5;
+  string plate_number = 6;
+  string brand = 7;
+  string model = 8;
+  string color = 9;
+}
+
+message RegisterDriverResponse {
+  string message = 1;
+  int32 user_id = 2;
+  int32 driver_id = 3;
+  string role = 4;
+  string application_status = 5;
+}
+
+message SetDriverPasswordRequest {
+  string phone = 1;
+  string password = 2;
+}

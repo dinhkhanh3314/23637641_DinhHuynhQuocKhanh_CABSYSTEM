@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package trip;
+
+service TripService {
+  rpc CreateTrip (CreateTripRequest) returns (TripResponse);
+  rpc GetTrip (GetTripRequest) returns (TripResponse);
+  rpc StartTrip (UpdateTripStatusRequest) returns (TripResponse);
+  rpc CompleteTrip (UpdateTripStatusRequest) returns (TripResponse);
+}
+
+message CreateTripRequest {
+  int32 bookingId = 1;
+  int32 customerId = 2;
+  int32 driverId = 3;
+  double pickupLatitude = 4;
+  double pickupLongitude = 5;
+  double destinationLatitude = 6;
+  double destinationLongitude = 7;
+}
+
+message GetTripRequest {
+  int32 tripId = 1;
+}
+
+message UpdateTripStatusRequest {
+  int32 tripId = 1;
+}
+
+message TripResponse {
+  bool success = 1;
+  string message = 2;
+  int32 tripId = 3;
+  int32 bookingId = 4;
+  int32 customerId = 5;
+  int32 driverId = 6;
+  double pickupLatitude = 7;
+  double pickupLongitude = 8;
+  double destinationLatitude = 9;
+  double destinationLongitude = 10;
+  string status = 11;
+  string startedAt = 12;
+  string completedAt = 13;
+}

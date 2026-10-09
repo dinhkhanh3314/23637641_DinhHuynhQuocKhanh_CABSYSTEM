@@ -1,6 +1,7 @@
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
 const { getNearbyDrivers } = require("../grpc/driverClient");
+const { createTrip } = require("../grpc/tripClient");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -138,7 +139,7 @@ async function acceptBooking(id) {
     throw new Error("BOOKING_NOT_ASSIGNED");
   }
 
-  return prisma.booking.update({
+  const bookingAccepted = await prisma.booking.update({
     where: {
       id: Number(id),
     },
@@ -146,6 +147,29 @@ async function acceptBooking(id) {
       status: "DRIVER_ACCEPTED",
     },
   });
+
+  try {
+    await createTrip({
+      bookingId: bookingAccepted.id,
+      customerId: bookingAccepted.customerId,
+      driverId: bookingAccepted.driverId,
+      pickupLatitude: bookingAccepted.pickupLatitude,
+      pickupLongitude: bookingAccepted.pickupLongitude,
+      destinationLatitude: bookingAccepted.destinationLatitude,
+      destinationLongitude: bookingAccepted.destinationLongitude,
+    });
+  } catch (error) {
+    const alreadyExists =
+      error.details === "TRIP_ALREADY_EXISTS" ||
+      error.message === "TRIP_ALREADY_EXISTS";
+
+    if (!alreadyExists) {
+      console.error("CreateTrip gRPC error:", error);
+      throw new Error("TRIP_CREATION_FAILED");
+    }
+  }
+
+  return bookingAccepted;
 }
 
 async function rejectBooking(id) {
