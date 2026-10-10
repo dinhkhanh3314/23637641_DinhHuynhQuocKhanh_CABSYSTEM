@@ -1,6 +1,7 @@
 const { PrismaClient } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const axios = require("axios");
+const { publishEvent } = require("../kafka/eventBus");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -52,6 +53,12 @@ async function createPayment(data) {
     },
   });
 
+  await publishEvent("payment.events", "PaymentCreated", {
+    paymentId: payment.id,
+    tripId: payment.tripId,
+    customerId: payment.customerId,
+    status: payment.status,
+  });
   return payment;
 }
 
@@ -97,7 +104,7 @@ async function processPayment(paymentId) {
     const result = response.data;
 
     if (result.status === "SUCCESS") {
-      return prisma.payment.update({
+      const paidPayment = await prisma.payment.update({
         where: {
           id: payment.id,
         },
@@ -107,9 +114,16 @@ async function processPayment(paymentId) {
           paidAt: new Date(),
         },
       });
+      await publishEvent("payment.events", "PaymentProcessed", {
+        paymentId: paidPayment.id,
+        tripId: paidPayment.tripId,
+        customerId: paidPayment.customerId,
+        status: paidPayment.status,
+      });
+      return paidPayment;
     }
 
-    return prisma.payment.update({
+    const failedPayment = await prisma.payment.update({
       where: {
         id: payment.id,
       },
@@ -119,10 +133,17 @@ async function processPayment(paymentId) {
         failureReason: result.message || "Payment failed",
       },
     });
+    await publishEvent("payment.events", "PaymentProcessed", {
+      paymentId: failedPayment.id,
+      tripId: failedPayment.tripId,
+      customerId: failedPayment.customerId,
+      status: failedPayment.status,
+    });
+    return failedPayment;
   } catch (error) {
     console.error(error);
 
-    return prisma.payment.update({
+    const failedPayment = await prisma.payment.update({
       where: {
         id: payment.id,
       },
@@ -132,6 +153,13 @@ async function processPayment(paymentId) {
         failureReason: "Payment provider unavailable",
       },
     });
+    await publishEvent("payment.events", "PaymentProcessed", {
+      paymentId: failedPayment.id,
+      tripId: failedPayment.tripId,
+      customerId: failedPayment.customerId,
+      status: failedPayment.status,
+    });
+    return failedPayment;
   }
 }
 

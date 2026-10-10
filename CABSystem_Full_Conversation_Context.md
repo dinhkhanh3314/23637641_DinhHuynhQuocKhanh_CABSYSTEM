@@ -44,7 +44,8 @@ Thư mục: `contracts/grpc`
 - Booking → Driver gRPC để tìm tài xế gần.
 - Booking → Trip gRPC khi accept booking.
 - Payment gọi mock payment provider bằng HTTP theo nghiệp vụ hiện có.
-- Notification hiện cung cấp gRPC server; chưa có event Kafka vì Kafka thuộc Phần 12.
+- Notification hiện cung cấp gRPC server và consumer Kafka cho `booking.events` và
+  `payment.events`.
 
 ## API Gateway routes đã nối qua gRPC
 
@@ -112,6 +113,8 @@ docker compose up -d
 2. Bổ sung thêm RPC Customer/Driver nếu cần expose toàn bộ REST endpoint hiện có, vì contract hiện tại mới bao phủ các RPC cần cho luồng nghiệp vụ chính.
 3. Bổ sung test tự động cho từng RPC và mapping lỗi.
 4. Chuẩn hóa health check gRPC thực tế và graceful shutdown.
-5. Khi gRPC toàn bộ được xác nhận mới chuyển sang Kafka.
+5. Phần 12 Kafka đã bắt đầu: Booking/Payment publish event và Notification consume
+   event để tạo notification. Chưa có transactional outbox; full runtime Kafka
+   verification và các event còn lại vẫn là công việc tiếp theo.
 
 Khi gặp lỗi ở cuộc trò chuyện mới, cung cấp service đang chạy, log đầy đủ, URL/method/body Postman, status hoặc gRPC code và ID nghiệp vụ liên quan.

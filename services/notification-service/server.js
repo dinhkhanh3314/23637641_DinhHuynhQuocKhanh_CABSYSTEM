@@ -4,6 +4,7 @@ const express = require("express");
 const connectDatabase = require("./config/database");
 const notificationRoutes = require("./routes/notification");
 const { startNotificationGrpcServer } = require("./grpc/notificationServer");
+const { startNotificationConsumer } = require("./kafka/notificationConsumer");
 
 const app = express();
 
@@ -28,6 +29,9 @@ async function startServer() {
   });
 
   startNotificationGrpcServer();
+  startNotificationConsumer().catch((error) => {
+    console.error("Notification Kafka consumer failed to start:", error);
+  });
 }
 
 startServer();

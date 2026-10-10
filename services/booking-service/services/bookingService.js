@@ -2,6 +2,7 @@ const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
 const { getNearbyDrivers } = require("../grpc/driverClient");
 const { createTrip } = require("../grpc/tripClient");
+const { publishEvent } = require("../kafka/eventBus");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -33,7 +34,14 @@ async function createBooking(data) {
     },
   });
 
-  return findAndAssignNextDriver(booking.id);
+  const assignedBooking = await findAndAssignNextDriver(booking.id);
+  await publishEvent("booking.events", "BookingCreated", {
+    bookingId: assignedBooking.id,
+    customerId: assignedBooking.customerId,
+    driverId: assignedBooking.driverId,
+    status: assignedBooking.status,
+  });
+  return assignedBooking;
 }
 
 async function getBooking(id) {
@@ -148,6 +156,13 @@ async function acceptBooking(id) {
     },
   });
 
+  await publishEvent("booking.events", "DriverAccepted", {
+    bookingId: bookingAccepted.id,
+    customerId: bookingAccepted.customerId,
+    driverId: bookingAccepted.driverId,
+    status: bookingAccepted.status,
+  });
+
   try {
     await createTrip({
       bookingId: bookingAccepted.id,
@@ -198,7 +213,14 @@ async function rejectBooking(id) {
     },
   });
 
-  return findAndAssignNextDriver(id);
+  const nextBooking = await findAndAssignNextDriver(id);
+  await publishEvent("booking.events", "DriverRejected", {
+    bookingId: nextBooking.id,
+    customerId: nextBooking.customerId,
+    driverId: nextBooking.driverId,
+    status: nextBooking.status,
+  });
+  return nextBooking;
 }
 
 async function timeoutBooking(id) {
