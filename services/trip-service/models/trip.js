@@ -48,7 +48,7 @@ const tripSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["ACCEPTED", "IN_PROGRESS", "COMPLETED"],
+      enum: ["ACCEPTED", "IN_PROGRESS", "COMPLETED", "CANCELED"],
       default: "ACCEPTED",
     },
 
@@ -59,6 +59,21 @@ const tripSchema = new mongoose.Schema(
 
     completedAt: {
       type: Date,
+      default: null,
+    },
+
+    canceledAt: {
+      type: Date,
+      default: null,
+    },
+
+    canceledBy: {
+      type: String,
+      default: null,
+    },
+
+    cancelReason: {
+      type: String,
       default: null,
     },
   },

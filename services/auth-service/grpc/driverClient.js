@@ -15,7 +15,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 const driverProto = grpc.loadPackageDefinition(packageDefinition).driver;
 
 const client = new driverProto.DriverService(
-  "localhost:50053",
+  process.env.DRIVER_GRPC_ADDRESS || "localhost:50053",
   grpc.credentials.createInsecure(),
 );
 

@@ -144,16 +144,18 @@ function startDriverGrpcServer() {
 
     GetNearbyDrivers: async (call, callback) => {
       try {
-        const { latitude, longitude, radius } = call.request;
+        const { latitude, longitude, radius, page, limit } = call.request;
 
-        const drivers = await driverService.getNearbyDrivers(
+        const result = await driverService.getNearbyDrivers(
           latitude,
           longitude,
           radius || 1000,
+          page,
+          limit,
         );
 
         callback(null, {
-          drivers: drivers.map((driver) => ({
+          drivers: result.drivers.map((driver) => ({
             id: driver.id,
             user_id: driver.userId,
             full_name: driver.fullName,
@@ -162,6 +164,9 @@ function startDriverGrpcServer() {
             latitude: driver.latitude,
             longitude: driver.longitude,
           })),
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
         });
       } catch (error) {
         console.error("Get nearby drivers gRPC error:", error);

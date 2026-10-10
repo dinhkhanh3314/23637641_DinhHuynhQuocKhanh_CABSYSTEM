@@ -1,20 +1,22 @@
 # Phần 14 - Security
 
-## Đã triển khai
+## Cơ chế hiện có
 
 - API Gateway xác thực JWT từ header `Authorization: Bearer <token>`.
-- Token sai hoặc hết hạn trả HTTP `401`.
-- Thiếu `JWT_SECRET` trả lỗi cấu hình rõ ràng thay vì chạy không bảo vệ.
-- Các nhóm API Customer, Driver, Booking, Trip, Payment và Notification yêu cầu
+- Token sai, token hết hạn hoặc token bị sửa chữ ký trả HTTP `401`.
+- Thiếu `JWT_SECRET` là lỗi cấu hình, không tự chạy ở chế độ không bảo vệ.
+- Các nhóm Customer, Driver, Booking, Trip, Payment và Notification yêu cầu
   JWT.
-- Route health và các route Auth công khai vẫn có thể truy cập để đăng ký,
-  đăng nhập và xác thực OTP.
-- Rate limit được mount trước các route `/api`, nên thực sự áp dụng cho Gateway.
-- Các route approve/reject Driver application yêu cầu role `OPERATOR` hoặc
-  `ADMIN`.
-- Route resubmit application yêu cầu role `DRIVER`.
-- Password đăng ký/đặt mật khẩu tối thiểu 8 ký tự.
-- OTP không được trả trong response khi `NODE_ENV=production`.
+- Route health, route gốc và route Auth/OTP công khai theo thiết kế.
+- Rate limit được áp dụng trước nhóm route `/api`.
+- Approve/reject Driver application yêu cầu `OPERATOR` hoặc `ADMIN`.
+- Customer, Driver, Booking và Trip kiểm tra ownership/role trước khi truy cập.
+- Payment lấy Customer từ JWT, không tin `customerId` do client gửi.
+- Rating lấy reviewer từ JWT, không tin `reviewerId` do client gửi.
+- Payment hỗ trợ `Idempotency-Key` để retry không tạo giao dịch mới.
+- Webhook Payment có thể yêu cầu `X-Payment-Webhook-Secret`.
+- Password có độ dài tối thiểu 8 ký tự.
+- OTP không trả trong response khi `NODE_ENV=production`.
 
 ## Route công khai
 
@@ -42,25 +44,35 @@ POST /api/auth/driver/set-password
 /api/notifications
 ```
 
-Gửi token trong Postman:
+Ví dụ:
 
 ```http
-Authorization: Bearer <accessToken>
+Authorization: Bearer <access_token>
 ```
 
-## Kiểm tra thủ công bằng Postman
+## Các kiểm thử bảo mật cần chạy
 
-1. Gọi API nghiệp vụ không có header Authorization và xác nhận HTTP `401`.
-2. Gọi bằng token sai và xác nhận HTTP `401`.
-3. Đăng nhập để lấy `accessToken`.
-4. Gọi lại API bằng token hợp lệ và xác nhận request đi tiếp.
-5. Dùng token Customer gọi route approve application và xác nhận HTTP `403`.
-6. Kiểm tra đăng ký/đặt password ngắn hơn 8 ký tự trả HTTP `400`.
-7. Đặt `NODE_ENV=production`, gửi OTP và xác nhận response không chứa OTP.
+1. Gọi `/api/bookings` không có token → `401`.
+2. Gọi bằng token sai → `401`.
+3. Sửa payload JWT nhưng không ký lại → `401`.
+4. Customer gọi accept booking hoặc approve application → `403`.
+5. Gửi password ngắn hơn 8 ký tự → `400`.
+6. Gửi SQL injection trong login → không đăng nhập, không lộ dữ liệu.
+7. Gửi chuỗi XSS trong comment → API không thực thi script; frontend phải
+   escape khi hiển thị.
+8. Gửi nhiều request liên tục → đạt ngưỡng thì `429`.
+9. Gửi lại Payment với cùng `Idempotency-Key` → trả payment cũ, không double
+   charge.
+10. Gửi webhook sai secret → bị từ chối.
 
-## Giới hạn cần kiểm tra tiếp
+Thực hiện theo checklist chi tiết trong [TEST_01_30.md](../../TEST_01_30.md).
 
-JWT hiện được xác thực tại Gateway; thông tin identity chưa được truyền vào
-metadata gRPC để microservice tự xác thực. Kiểm tra ownership của từng
-`customerId`, `driverId`, `bookingId` và `tripId` là bước hardening/integration
-tiếp theo nếu cần bảo vệ ở mức service.
+## Encryption và giới hạn
+
+Password phải được hash, không lưu plaintext. Tuy nhiên hash password không
+đồng nghĩa với encryption at rest cho toàn bộ PostgreSQL/MongoDB volume.
+Encryption at rest của database/volume và key management phải được bật ở hạ
+tầng triển khai nếu tiêu chí chấm yêu cầu.
+
+JWT hiện được xác thực tại Gateway. Nếu cần defense-in-depth, có thể truyền
+identity đã xác thực qua gRPC metadata và xác thực lại ở từng service.

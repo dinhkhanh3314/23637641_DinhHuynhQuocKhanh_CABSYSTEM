@@ -1,67 +1,161 @@
-# Phần 13 - Integration
+# Integration và Docker Compose
 
-Phần 13 kiểm tra việc các service chạy cùng nhau. Giao tiếp nội bộ vẫn tuân
-theo kiến trúc:
+## 1. Kiến trúc runtime
 
 ```text
-Client HTTP/REST -> API Gateway -> gRPC -> Microservice
-Microservice -> Kafka events -> Notification Consumer
+Client/Postman
+    -> HTTP/REST API Gateway :3000
+    -> gRPC trong Docker network
+    -> Microservices
+    -> PostgreSQL/MongoDB/Redis
+    -> Kafka events
+    -> Notification Consumer
 ```
 
-## Cấu hình cổng
+Client không gọi trực tiếp HTTP của microservice trong luồng demo chính.
+
+## 2. Cổng
 
 | Thành phần | HTTP | gRPC |
 |---|---:|---:|
-| API Gateway | 3000 | - |
-| Auth | 3001 | 50051 |
-| Customer | 3002 | 50052 |
-| Driver | 3003 | 50053 |
-| Booking | 3004 | 50054 |
-| Trip | 3005 | 50055 |
-| Payment | 3006 | 50056 |
-| Notification | 3007 | 50057 |
+| API Gateway | `3000` | - |
+| Auth Service | nội bộ | `50051` |
+| Customer Service | nội bộ | `50052` |
+| Driver Service | nội bộ | `50053` |
+| Booking Service | nội bộ | `50054` |
+| Trip Service | nội bộ | `50055` |
+| Payment Service | nội bộ | `50056` |
+| Notification Service | nội bộ | `50057` |
+| PostgreSQL | `5432` | - |
+| MongoDB | `27017` | - |
+| Redis | `6379` | - |
+| Kafka | `9092` | - |
+| Mock Payment Provider | `4000` | - |
 
-## Khởi động
+Các port infrastructure được publish để debug local. Port HTTP/gRPC của
+microservice chỉ được dùng bên trong Compose network.
 
-Từ thư mục gốc:
+## 3. Khởi động toàn bộ hệ thống
+
+Tại thư mục gốc repository:
 
 ```powershell
-docker compose up -d postgres mongodb redis kafka mock-payment-provider
+docker compose up -d --build
 ```
 
-Sau đó mở một terminal cho mỗi service và chạy `node server.js` từ chính thư
-mục của service. Chạy Notification trước Booking/Payment để consumer Kafka sẵn
-sàng nhận event, và chạy API Gateway cuối cùng.
+Sau lần build đầu tiên, nếu không đổi source hoặc Dockerfile:
 
-## Kiểm tra health bằng Postman
-
-Sau khi các service đã chạy, gửi lần lượt các request `GET` sau trong Postman:
-
-```http
-GET http://localhost:3000/health
-GET http://localhost:3001/health
-GET http://localhost:3002/health
-GET http://localhost:3003/health
-GET http://localhost:3004/health
-GET http://localhost:3005/health
-GET http://localhost:3006/health
-GET http://localhost:3007/health
+```powershell
+docker compose up -d
 ```
 
-Tất cả request cần trả HTTP `200`. Nếu service nào không phản hồi, kiểm tra
-terminal của service đó trước khi tiếp tục test nghiệp vụ.
+Kiểm tra trạng thái:
 
-## Kiểm tra nghiệp vụ tích hợp
+```powershell
+docker compose ps
+```
 
-1. Gửi request qua `http://localhost:3000/api`, không gọi trực tiếp HTTP của
-   microservice.
-2. Lưu các ID do response trả về: `customerId`, `driverId`, `bookingId`,
-   `tripId`, `paymentId`.
-3. Tạo booking và kiểm tra Booking Service gọi Driver bằng gRPC.
-4. Accept booking và kiểm tra Booking Service gọi Trip bằng gRPC.
-5. Tạo/process payment và kiểm tra mock payment provider.
-6. Kiểm tra log Notification Service có nhận `BookingCreated`,
-   `DriverAccepted`, `PaymentCreated` hoặc `PaymentProcessed`.
-7. Đọc notification qua Gateway để xác nhận event đã được lưu vào MongoDB.
+Các service ứng dụng cần ở trạng thái `running`:
 
-Smoke test không tạo dữ liệu nghiệp vụ và không thay thế kiểm thử Postman.
+```text
+api-gateway
+auth-service
+customer-service
+driver-service
+booking-service
+trip-service
+payment-service
+notification-service
+```
+
+Các job sau có thể ở trạng thái `Exited (0)`:
+
+```text
+postgres-init
+auth-migrate
+customer-migrate
+driver-migrate
+booking-migrate
+payment-migrate
+```
+
+Đây là trạng thái thành công vì chúng chỉ tạo database/schema rồi kết thúc.
+
+## 4. Health và readiness
+
+```powershell
+curl.exe http://localhost:3000/health
+curl.exe http://localhost:3000/ready
+curl.exe http://localhost:3000/health/services
+```
+
+Kết quả thành công:
+
+```json
+{"status":"UP"}
+```
+
+```json
+{"status":"READY"}
+```
+
+`/health/services` phải trả `status` là `HEALTHY` và tất cả service là `UP`.
+Nếu một dependency dừng, endpoint có thể trả HTTP `503` và `DEGRADED`.
+
+## 5. Luồng tích hợp cần kiểm tra
+
+1. Đăng ký/đăng nhập qua `/api/auth`.
+2. Customer tạo booking qua `/api/bookings`.
+3. Booking gọi Driver Service bằng gRPC để tìm Driver gần pickup point.
+4. Driver accept booking; Booking gọi Trip Service bằng gRPC.
+5. Trip chuyển trạng thái và tạo review `PENDING` khi hoàn tất.
+6. Payment tính tiền theo tọa độ Trip, nhận webhook và hỗ trợ idempotency.
+7. Booking/Payment phát Kafka event; Notification Consumer ghi notification
+   cho Customer hoặc Driver liên quan.
+
+Chi tiết request và kết quả mong đợi nằm trong [TEST_01_30.md](../../TEST_01_30.md).
+
+## 6. Dữ liệu và dừng hệ thống
+
+Compose dùng named volume:
+
+```text
+postgres_data
+mongodb_data
+```
+
+Dừng nhưng giữ container và dữ liệu:
+
+```powershell
+docker compose stop
+```
+
+Dừng và xóa container nhưng giữ volume:
+
+```powershell
+docker compose down
+```
+
+Không dùng `docker compose down -v` nếu cần giữ dữ liệu trước đó.
+
+## 7. Debug
+
+```powershell
+docker compose logs --tail=100 api-gateway
+docker compose logs --tail=100 booking-service trip-service payment-service
+docker compose logs --tail=100 notification-service kafka
+```
+
+Sau khi sửa source/Dockerfile, build lại image:
+
+```powershell
+docker compose build
+docker compose up -d
+```
+
+## 8. Chạy service trực tiếp trên host
+
+Đây chỉ là phương án debug thay thế, không phải cách chạy demo Compose. Khi
+chạy `node server.js` trực tiếp, mỗi service cần `.env` và gRPC address
+`localhost:<port>` tương ứng. Không chạy đồng thời cùng service có cùng port
+đang chạy trong Docker.

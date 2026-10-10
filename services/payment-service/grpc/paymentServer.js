@@ -63,6 +63,7 @@ async function CreatePayment(call, callback) {
       customerId: call.request.customer_id,
       amount: call.request.amount,
       paymentMethod: call.request.payment_method,
+      idempotencyKey: call.request.idempotency_key,
     });
     callback(null, toPaymentResponse(payment));
   } catch (error) {
@@ -88,21 +89,22 @@ async function ProcessPayment(call, callback) {
     callback(mapError(error));
   }
 
-  async function EstimateFare(call, callback) {
-    try {
-      const fare = await calculateFare(call.request.id);
-      callback(null, {
-        trip_id: fare.tripId,
-        distance_km: fare.distanceKm,
-        base_fare: fare.baseFare,
-        price_per_km: fare.pricePerKm,
-        total_fare: fare.totalFare,
-        currency: fare.currency,
-      });
-    } catch (error) {
-      console.error("EstimateFare gRPC error:", error);
-      callback(mapError(error));
-    }
+}
+
+async function EstimateFare(call, callback) {
+  try {
+    const fare = await calculateFare(call.request.trip_id);
+    callback(null, {
+      trip_id: fare.tripId,
+      distance_km: fare.distanceKm,
+      base_fare: fare.baseFare,
+      price_per_km: fare.pricePerKm,
+      total_fare: fare.totalFare,
+      currency: fare.currency,
+    });
+  } catch (error) {
+    console.error("EstimateFare gRPC error:", error);
+    callback(mapError(error));
   }
 }
 

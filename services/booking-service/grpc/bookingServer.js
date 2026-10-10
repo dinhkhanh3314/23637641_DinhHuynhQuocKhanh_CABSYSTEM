@@ -85,7 +85,10 @@ async function CreateBooking(call, callback) {
 
 async function GetBooking(call, callback) {
   try {
-    const booking = await getBooking(call.request.id);
+    const booking = await getBooking(
+      call.request.id,
+      call.request.customer_id || undefined,
+    );
 
     if (!booking) {
       return callback({
@@ -103,7 +106,11 @@ async function GetBooking(call, callback) {
 
 async function GetBookings(call, callback) {
   try {
-    const bookings = await getBookings();
+    const bookings = await getBookings(
+      call.request.customer_id || undefined,
+      call.request.page,
+      call.request.limit,
+    );
     callback(null, {
       bookings: bookings.map(toBookingResponse),
     });

@@ -18,7 +18,7 @@ const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
 const customerProto = grpc.loadPackageDefinition(packageDefinition).customer;
 
 const client = new customerProto.CustomerService(
-  "localhost:50052",
+  process.env.CUSTOMER_GRPC_ADDRESS || "localhost:50052",
   grpc.credentials.createInsecure(),
 );
 

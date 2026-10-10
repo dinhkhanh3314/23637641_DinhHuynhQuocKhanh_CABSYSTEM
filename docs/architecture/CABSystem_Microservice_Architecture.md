@@ -2,7 +2,8 @@
 
 ## 1. Tổng quan
 
-CABSystem được thiết kế theo kiến trúc Microservices, gồm 7 Microservice tương ứng với các Bounded Context chính:
+CABSystem được thiết kế theo kiến trúc Microservices, gồm 7 backend
+microservice và 1 API Gateway:
 
 | Bounded Context | Microservice | Database |
 |---|---|---|
@@ -13,6 +14,9 @@ CABSystem được thiết kế theo kiến trúc Microservices, gồm 7 Microse
 | Trip Management | Trip Service | MongoDB |
 | Payment | Payment Service | PostgreSQL |
 | Notification | Notification Service | MongoDB |
+
+API Gateway không sở hữu database nghiệp vụ; Gateway chỉ là entry point REST,
+xác thực JWT, phân quyền, rate limit và gọi các service bằng gRPC.
 
 Kiến trúc giao tiếp:
 
@@ -62,14 +66,14 @@ Kiến trúc giao tiếp:
                                                                  │
                                                      BookingAccepted
                                                                  │
-                                                               Kafka
+                                                               gRPC
                                                                  │
                                                                  ▼
                                                         ┌──────────────────┐
                                                         │  Trip Service    │
                                                         └────────┬─────────┘
                                                                  │
-                                                          TripCompleted
+                                                          Domain events
                                                                  │
                                                                Kafka
                                                                  │
@@ -132,6 +136,20 @@ API Gateway thực hiện:
 - Routing
 
 Client không gọi trực tiếp các Microservice.
+
+## 3.1. Runtime bằng Docker Compose
+
+Toàn bộ stack được khởi động tại thư mục gốc bằng:
+
+```powershell
+docker compose up -d --build
+```
+
+Client chỉ gọi `http://localhost:3000`. Các backend service dùng hostname và
+gRPC port trong Docker network, ví dụ `booking-service:50054` và
+`trip-service:50055`. PostgreSQL và MongoDB dùng named volume để giữ dữ liệu;
+`postgres-init` và các container `*-migrate` là job khởi tạo, có thể kết thúc
+với `Exited (0)` sau khi hoàn thành.
 
 ---
 

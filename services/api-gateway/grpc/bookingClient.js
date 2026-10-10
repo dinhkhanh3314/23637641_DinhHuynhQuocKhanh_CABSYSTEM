@@ -38,12 +38,19 @@ function createBooking(data) {
   return promisify("CreateBooking", data);
 }
 
-function getBooking(id) {
-  return promisify("GetBooking", { id: Number(id) });
+function getBooking(id, customerId) {
+  return promisify("GetBooking", {
+    id: Number(id),
+    customer_id: Number(customerId),
+  });
 }
 
-function getBookings() {
-  return promisify("GetBookings", {});
+function getBookings(customerId, page, limit) {
+  return promisify("GetBookings", {
+    customer_id: Number(customerId),
+    page: Number(page) || 1,
+    limit: Number(limit) || 20,
+  });
 }
 
 function updateBookingStatus(id, status) {

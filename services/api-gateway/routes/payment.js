@@ -6,6 +6,7 @@ const {
   estimateFare,
 } = require("../grpc/paymentClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
+const { requireRoles } = require("../middlewares/auth");
 
 const router = express.Router();
 
@@ -19,9 +20,10 @@ router.post("/", async (req, res) => {
   try {
     res.status(201).json({ payment: await createPayment({
       trip_id: req.body.tripId,
-      customer_id: req.body.customerId,
-      amount: req.body.amount || 0,
+      customer_id: req.user.userId,
+      amount: 0,
       payment_method: req.body.paymentMethod || "MOCK_CARD",
+      idempotency_key: req.get("Idempotency-Key"),
     }) });
   } catch (error) {
     handleError(res, error);
@@ -44,7 +46,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id/process", async (req, res) => {
+router.put("/:id/process", requireRoles("CUSTOMER"), async (req, res) => {
   try {
     res.json({ payment: await processPayment(req.params.id) });
   } catch (error) {

@@ -1,59 +1,62 @@
 openapi: 3.0.3
 info:
-  title: CABSystem API
+  title: CAB System API Gateway
   version: 1.0.0
-  description: 'API đặt xe trực tuyến của công ty ABC (CABSystem).
-
-    Vai trò (x-roles): CUSTOMER, DRIVER, ADMIN.
-
-
-    Kiến trúc: Client -> API Gateway (REST/HTTPS, điểm vào duy nhất) -> Microservice (gRPC). Mỗi operation có x-service cho biết service xử lý.
-
-    Gateway xác thực JWT cục bộ; Auth Service chỉ xử lý đăng ký, đăng nhập và refresh token.
-
-    Các service trao đổi sự kiện qua Kafka nên một số kết quả xuất hiện bất đồng bộ (Trip sau khi Driver chấp nhận, Payment sau khi Trip hoàn thành).
-
-    Không tích hợp Payment Provider và Notification Provider bên ngoài: thanh toán điện tử do Payment Service xử lý nội bộ (mô phỏng), thông báo là thông báo trong hệ thống.
-
-
-    Trạng thái Booking: PENDING_DRIVER -> SENT_TO_DRIVER -> ACCEPTED; CANCELLED; NO_DRIVER_FOUND (giả định, cần stakeholder xác nhận).
-
-    Trạng thái Trip: CREATED -> IN_PROGRESS -> COMPLETED.
-
-    Trạng thái Payment: PENDING -> PROCESSING -> SUCCESS | FAILED.
-
-    '
+  description: |
+    REST contract exposed by the CAB System API Gateway.
+    Client/Postman calls port 3000. The Gateway validates JWT and calls
+    microservices through gRPC. Internal service HTTP ports are not part of the
+    client contract.
 servers:
-- url: https://api.abc.com/api/v1
+  - url: http://localhost:3000
+    description: Local Docker Compose Gateway
 security:
-- bearerAuth: []
+  - bearerAuth: []
 tags:
-- name: Auth
-  description: FR-01..03 (Auth Service; /users/me do Customer Service hoặc Driver Service theo vai trò)
-- name: Booking
-  description: FR-04..07 (Booking Service)
-- name: DriverMatching
-  description: 'FR-08..12 (Booking Service: offer; Driver Service: trạng thái Driver)'
-- name: Trip
-  description: FR-13..17 (Trip Service)
-- name: Vehicle
-  description: FR-18..19 (Driver Service)
-- name: Payment
-  description: FR-20..23 (Payment Service)
-- name: Rating
-  description: FR-24..25 (Trip Service)
-- name: Admin
-  description: FR-26..28 (Customer, Driver, Booking, Trip Service theo tài nguyên)
-- name: Notification
-  description: FR-29 (Notification Service)
+  - name: Health
+  - name: Auth
+  - name: Customer
+  - name: Driver
+  - name: Booking
+  - name: Trip
+  - name: Payment
+  - name: Notification
 paths:
-  /auth/register:
+  /health:
+    get:
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Gateway process is running
+  /ready:
+    get:
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: Gateway and dependencies are ready
+        '503':
+          description: One or more dependencies are unavailable
+  /health/services:
+    get:
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: All services are healthy
+        '503':
+          description: At least one service is down
+  /api/:
+    get:
+      tags: [Health]
+      security: []
+      responses:
+        '200':
+          description: API Gateway information
+  /api/auth/register:
     post:
-      tags:
-      - Auth
-      summary: Đăng ký tài khoản Customer
-      description: 'FR-01, UC-01, BRL-01. Roles: public'
-      operationId: register
+      tags: [Auth]
       security: []
       requestBody:
         required: true
@@ -62,28 +65,12 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '201':
-          description: Tạo tài khoản thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '409':
-          description: Tài khoản đã tồn tại (ACCOUNT_ALREADY_EXISTS)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Auth Service
-  /auth/login:
+        '201': { description: Account created }
+        '400': { description: Invalid request }
+        '409': { description: Account already exists }
+  /api/auth/login:
     post:
-      tags:
-      - Auth
-      summary: Đăng nhập
-      description: 'FR-02, UC-02, BRL-02. Roles: public (Customer, Driver, Admin)'
-      operationId: login
+      tags: [Auth]
       security: []
       requestBody:
         required: true
@@ -92,81 +79,167 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
       responses:
-        '200':
-          description: Đăng nhập thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthToken'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          description: Tài khoản không được phép truy cập (ACCOUNT_LOCKED)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Auth Service
-  /users/me:
-    get:
-      tags:
-      - Auth
-      summary: Xem thông tin cá nhân
-      description: 'FR-03, UC-03. Roles: CUSTOMER, DRIVER. Gateway định tuyến theo vai trò: CUSTOMER -> Customer Service, DRIVER -> Driver Service'
-      operationId: getMe
-      x-roles:
-      - CUSTOMER
-      - DRIVER
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-      x-service: Customer Service (CUSTOMER) / Driver Service (DRIVER)
-    put:
-      tags:
-      - Auth
-      summary: Cập nhật thông tin cá nhân
-      description: 'FR-03, UC-03. Roles: CUSTOMER, DRIVER. Gateway định tuyến theo vai trò: CUSTOMER -> Customer Service, DRIVER -> Driver Service'
-      operationId: updateMe
-      x-roles:
-      - CUSTOMER
-      - DRIVER
+        '200': { description: Login successful }
+        '401': { description: Invalid credentials }
+  /api/auth/driver/send-otp:
+    post:
+      tags: [Auth]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserUpdate'
+              type: object
+              required: [phone]
+              properties:
+                phone: { type: string }
       responses:
-        '200':
-          description: Cập nhật thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Conflict'
-      x-service: Customer Service (CUSTOMER) / Driver Service (DRIVER)
-  /bookings:
+        '200': { description: OTP sent }
+  /api/auth/driver/verify-otp:
     post:
-      tags:
-      - Booking
-      summary: Tạo Booking
-      description: 'FR-04, UC-04, BRL-04, BRL-25. Roles: CUSTOMER. Booking Service tính estimatedFare, sau đó tự động tìm Driver (UC-08, xử lý nội bộ). Booking ở trạng thái PENDING_DRIVER.'
-      operationId: createBooking
-      x-roles:
-      - CUSTOMER
+      tags: [Auth]
+      security: []
+      responses:
+        '200': { description: OTP verified }
+        '400': { description: Invalid OTP }
+  /api/auth/driver/register:
+    post:
+      tags: [Auth]
+      security: []
+      responses:
+        '201': { description: Driver application created }
+        '400': { description: Invalid application }
+  /api/auth/driver/set-password:
+    post:
+      tags: [Auth]
+      security: []
+      responses:
+        '200': { description: Driver password set }
+  /api/customers/{userId}:
+    get:
+      tags: [Customer]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200': { description: Customer returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Customer]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object } }
+      responses:
+        '200': { description: Customer updated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/drivers:
+    get:
+      tags: [Driver]
+      responses:
+        '200': { description: Driver list }
+  /api/drivers/{id}:
+    get:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Driver returned }
+    put:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object } }
+      responses:
+        '200': { description: Driver updated }
+  /api/drivers/nearby:
+    get:
+      tags: [Driver]
+      description: Returns online drivers within the fixed default radius of 1 km.
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: Nearby driver list with pagination }
+        '400': { description: Invalid coordinates }
+  /api/drivers/online:
+    get:
+      tags: [Driver]
+      description: Operator/Admin endpoint for online drivers.
+      responses:
+        '200': { description: Online driver list }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/drivers/{id}/location:
+    get:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Driver location }
+    put:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { type: object } }
+      responses:
+        '200': { description: Location updated }
+  /api/drivers/{id}/online:
+    put:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Driver is online }
+  /api/drivers/{id}/offline:
+    put:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Driver is offline }
+  /api/drivers/applications:
+    get:
+      tags: [Driver]
+      responses:
+        '200': { description: Application list }
+  /api/drivers/applications/{id}/approve:
+    put:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Application approved }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/drivers/applications/{id}/reject:
+    put:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Application rejected }
+  /api/drivers/applications/{id}/resubmit:
+    put:
+      tags: [Driver]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Application resubmitted }
+  /api/bookings:
+    post:
+      tags: [Booking]
+      description: Customer ID is derived from the JWT, not the request body.
       requestBody:
         required: true
         content:
@@ -174,1628 +247,224 @@ paths:
             schema:
               $ref: '#/components/schemas/BookingCreate'
       responses:
-        '201':
-          description: Booking được tạo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Booking'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Booking Service
+        '201': { description: Booking created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
     get:
-      tags:
-      - Booking
-      summary: Xem lịch sử Booking
-      description: 'FR-07, UC-07. Roles: CUSTOMER'
-      operationId: listMyBookings
-      x-roles:
-      - CUSTOMER
+      tags: [Booking]
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: status
-        in: query
-        schema:
-          $ref: '#/components/schemas/BookingStatus'
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, default: 20 } }
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BookingList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-      x-service: Booking Service
-  /bookings/{bookingId}:
+        '200': { description: Booking list with pagination }
+  /api/bookings/{id}:
     get:
-      tags:
-      - Booking
-      summary: Xem trạng thái Booking
-      description: 'FR-05, UC-05. Roles: CUSTOMER (chủ sở hữu)'
-      operationId: getBooking
-      x-roles:
-      - CUSTOMER
+      tags: [Booking]
       parameters:
-      - $ref: '#/components/parameters/BookingId'
+        - $ref: '#/components/parameters/Id'
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Booking'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Booking Service
-  /bookings/{bookingId}/cancel:
-    post:
-      tags:
-      - Booking
-      summary: Hủy Booking
-      description: 'FR-06, UC-06, BRL-05. Roles: CUSTOMER. Chỉ hủy được khi Booking ở trạng thái cho phép (PENDING_DRIVER, SENT_TO_DRIVER).'
-      operationId: cancelBooking
-      x-roles:
-      - CUSTOMER
-      parameters:
-      - $ref: '#/components/parameters/BookingId'
-      responses:
-        '200':
-          description: Hủy thành công
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Booking'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: BOOKING_NOT_CANCELLABLE
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Booking Service
-  /drivers/me/status:
+        '200': { description: Booking returned }
+  /api/bookings/{id}/accept:
     put:
-      tags:
-      - DriverMatching
-      summary: Cập nhật trạng thái hoạt động và vị trí Driver
-      description: 'Phục vụ FR-08 (BRL-07, BRL-11). Roles: DRIVER'
-      operationId: updateDriverStatus
-      x-roles:
-      - DRIVER
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DriverStatusUpdate'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Driver'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Driver Service
-  /drivers/me/booking-offers:
-    get:
-      tags:
-      - DriverMatching
-      summary: Xem Booking được gửi đến Driver
-      description: 'FR-09, UC-08/UC-09. Roles: DRIVER. Matching (UC-08, UC-10) là xử lý nội bộ của Booking Service; Driver nhận offer qua danh sách này hoặc thông báo BOOKING_OFFER_CREATED. Offer hết hạn (expiresAt) chuyển EXPIRED (BRL-10, BRL-27).'
-      operationId: listMyOffers
-      x-roles:
-      - DRIVER
+      tags: [Booking]
       parameters:
-      - name: status
-        in: query
-        schema:
-          $ref: '#/components/schemas/OfferStatus'
+        - $ref: '#/components/parameters/Id'
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BookingOffer'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Booking Service
-  /booking-offers/{offerId}/accept:
-    post:
-      tags:
-      - DriverMatching
-      summary: Driver chấp nhận Booking
-      description: 'FR-10, FR-13, UC-09, BRL-09, BRL-14, BRL-29. Roles: DRIVER. Booking Service kiểm tra trạng thái kèm optimistic lock, chuyển Booking sang ACCEPTED và phát BookingAccepted; Trip Service tạo Trip bất đồng bộ nên response chưa chứa Trip. Customer lấy tripId qua GET /bookings/{bookingId} (có thể null trong thời gian ngắn). Driver lấy Trip qua GET /trips?status=CREATED. Cả hai đều nhận thông báo TRIP_CREATED.'
-      operationId: acceptOffer
-      x-roles:
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/OfferId'
-      responses:
-        '200':
-          description: Đã chấp nhận. Trip sẽ được tạo bất đồng bộ
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AcceptOfferResponse'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: OFFER_EXPIRED / OFFER_ALREADY_RESPONDED / Booking đã hủy
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Booking Service
-  /booking-offers/{offerId}/reject:
-    post:
-      tags:
-      - DriverMatching
-      summary: Driver từ chối Booking
-      description: 'FR-10, FR-11, UC-09, UC-10, BRL-06, BRL-13. Roles: DRIVER. Hệ thống tự động tìm Driver thay thế, không gửi lại cho Driver đã từ chối. Nếu hết Driver, Booking chuyển NO_DRIVER_FOUND và Customer được thông báo (FR-12, BRL-12).'
-      operationId: rejectOffer
-      x-roles:
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/OfferId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RejectRequest'
-      responses:
-        '204':
-          description: Đã từ chối
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-      x-service: Booking Service
-  /trips:
-    get:
-      tags:
-      - Trip
-      summary: Xem lịch sử Trip
-      description: 'FR-17, UC-14. Roles: CUSTOMER (Trip của mình), DRIVER (Trip được phân công)'
-      operationId: listMyTrips
-      x-roles:
-      - CUSTOMER
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: status
-        in: query
-        schema:
-          $ref: '#/components/schemas/TripStatus'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TripList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-      x-service: Trip Service
-  /trips/{tripId}:
-    get:
-      tags:
-      - Trip
-      summary: Theo dõi Trip
-      description: 'FR-15, UC-11. Roles: CUSTOMER, DRIVER (liên quan đến Trip)'
-      operationId: getTrip
-      x-roles:
-      - CUSTOMER
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/TripId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Trip'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Trip Service
-  /trips/{tripId}/status:
-    patch:
-      tags:
-      - Trip
-      summary: Cập nhật trạng thái Trip
-      description: 'FR-14, UC-12, BRL-15. Roles: DRIVER. Chỉ cho phép CREATED -> IN_PROGRESS. Hoàn thành dùng endpoint /complete.'
-      operationId: updateTripStatus
-      x-roles:
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/TripId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TripStatusUpdate'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Trip'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: TRIP_INVALID_TRANSITION
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Trip Service
-  /trips/{tripId}/complete:
-    post:
-      tags:
-      - Trip
-      summary: Hoàn thành Trip
-      description: 'FR-16, FR-20, UC-13, BRL-16. Roles: DRIVER. Chỉ khi Trip đang IN_PROGRESS. Trip Service phát TripCompleted; Payment Service tạo Payment (PENDING) bất đồng bộ nên paymentId trong response có thể null.'
-      operationId: completeTrip
-      x-roles:
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/TripId'
-      responses:
-        '200':
-          description: Trip hoàn thành
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Trip'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: TRIP_NOT_IN_PROGRESS
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Trip Service
-  /drivers/me/vehicles:
-    get:
-      tags:
-      - Vehicle
-      summary: Xem danh sách Vehicle của Driver
-      description: 'FR-18, UC-15. Roles: DRIVER'
-      operationId: listMyVehicles
-      x-roles:
-      - DRIVER
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Vehicle'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Driver Service
-    post:
-      tags:
-      - Vehicle
-      summary: Thêm Vehicle
-      description: 'FR-18, UC-15. Roles: DRIVER'
-      operationId: createMyVehicle
-      x-roles:
-      - DRIVER
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VehicleInput'
-      responses:
-        '201':
-          description: Đã tạo
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Vehicle'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-      x-service: Driver Service
-  /drivers/me/vehicles/{vehicleId}:
+        '200': { description: Booking accepted and Trip created }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/bookings/{id}/reject:
     put:
-      tags:
-      - Vehicle
-      summary: Cập nhật Vehicle
-      description: 'FR-18, UC-15. Roles: DRIVER (chủ sở hữu)'
-      operationId: updateMyVehicle
-      x-roles:
-      - DRIVER
+      tags: [Booking]
       parameters:
-      - $ref: '#/components/parameters/VehicleId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VehicleInput'
+        - $ref: '#/components/parameters/Id'
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Vehicle'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Driver Service
-    delete:
-      tags:
-      - Vehicle
-      summary: Xóa (vô hiệu hóa) Vehicle
-      description: 'FR-18, UC-15. Roles: DRIVER (chủ sở hữu)'
-      operationId: deleteMyVehicle
-      x-roles:
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/VehicleId'
-      responses:
-        '204':
-          description: Đã xóa
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Driver Service
-  /trips/{tripId}/payment:
-    get:
-      tags:
-      - Payment
-      summary: Xem Payment của Trip
-      description: 'FR-20, FR-23, UC-18. Roles: CUSTOMER. Payment được tạo bất đồng bộ sau TripCompleted; nếu chưa có trả 404 và client thử lại sau.'
-      operationId: getTripPayment
-      x-roles:
-      - CUSTOMER
-      parameters:
-      - $ref: '#/components/parameters/TripId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Payment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Payment Service
-  /payments/{paymentId}:
-    get:
-      tags:
-      - Payment
-      summary: Xem kết quả Payment
-      description: 'FR-23, UC-18. Roles: CUSTOMER'
-      operationId: getPayment
-      x-roles:
-      - CUSTOMER
-      parameters:
-      - $ref: '#/components/parameters/PaymentId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Payment'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Payment Service
-  /payments/{paymentId}/pay:
-    post:
-      tags:
-      - Payment
-      summary: Thực hiện thanh toán
-      description: 'FR-21, UC-17, BRL-17, BRL-18, BRL-19, BRL-20. Roles: CUSTOMER. CASH: ghi nhận hình thức thanh toán. ONLINE: Payment Service xử lý giao dịch nội bộ (mô phỏng) và cập nhật status của Payment (SUCCESS hoặc FAILED). Không lưu thông tin thẻ. Thất bại có thể gọi lại theo chính sách và không đổi trạng thái Trip (NFR-13).'
-      operationId: payTrip
-      x-roles:
-      - CUSTOMER
-      parameters:
-      - $ref: '#/components/parameters/PaymentId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PayRequest'
-      responses:
-        '200':
-          description: Đã ghi nhận. Kiểm tra payment.status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PayResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: TRIP_NOT_COMPLETED / PAYMENT_ALREADY_SUCCESS
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Payment Service
-  /trips/{tripId}/rating:
-    post:
-      tags:
-      - Rating
-      summary: Đánh giá Driver
-      description: 'FR-24, UC-19, BRL-21, BRL-22. Roles: CUSTOMER. Chỉ khi Trip COMPLETED và chưa có Rating.'
-      operationId: createRating
-      x-roles:
-      - CUSTOMER
-      parameters:
-      - $ref: '#/components/parameters/TripId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RatingCreate'
-      responses:
-        '201':
-          description: Đã lưu
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Rating'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          description: TRIP_NOT_COMPLETED / RATING_ALREADY_EXISTS
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-      x-service: Trip Service
-    get:
-      tags:
-      - Rating
-      summary: Xem Rating của Trip
-      description: 'FR-25, UC-19. Roles: CUSTOMER, DRIVER, ADMIN'
-      operationId: getRating
-      x-roles:
-      - CUSTOMER
-      - DRIVER
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/TripId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Rating'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Trip Service
-  /admin/customers:
-    get:
-      tags:
-      - Admin
-      summary: Danh sách Customer
-      description: 'FR-26, UC-20, BRL-23. Roles: ADMIN'
-      operationId: adminListCustomers
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: keyword
-        in: query
-        schema:
-          type: string
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Customer Service
-  /admin/customers/{customerId}:
-    get:
-      tags:
-      - Admin
-      summary: Chi tiết Customer
-      description: 'FR-26, UC-20. Roles: ADMIN'
-      operationId: adminGetCustomer
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/CustomerId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Customer Service
-    patch:
-      tags:
-      - Admin
-      summary: Khóa/mở khóa Customer
-      description: 'FR-26, UC-20. Roles: ADMIN. Customer Service cập nhật trạng thái và phát AccountStatusChanged để Auth Service áp dụng (đăng nhập trả ACCOUNT_LOCKED). Access token đã cấp còn hiệu lực đến khi hết hạn.'
-      operationId: adminUpdateCustomerStatus
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/CustomerId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AccountStatusUpdate'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Customer Service
-  /admin/drivers:
-    get:
-      tags:
-      - Admin
-      summary: Danh sách Driver
-      description: 'FR-27, UC-21. Roles: ADMIN'
-      operationId: adminListDrivers
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: activityStatus
-        in: query
-        schema:
-          $ref: '#/components/schemas/DriverActivityStatus'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DriverList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Driver Service
-  /admin/drivers/{driverId}:
-    get:
-      tags:
-      - Admin
-      summary: Chi tiết Driver
-      description: 'FR-27, UC-21. Roles: ADMIN'
-      operationId: adminGetDriver
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/DriverId'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Driver'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Driver Service
-    patch:
-      tags:
-      - Admin
-      summary: Khóa/mở khóa Driver
-      description: 'FR-27, UC-21. Roles: ADMIN. Driver Service cập nhật trạng thái và phát AccountStatusChanged để Auth Service áp dụng (đăng nhập trả ACCOUNT_LOCKED). Access token đã cấp còn hiệu lực đến khi hết hạn. Driver bị khóa không được chọn khi Matching (BRL-30).'
-      operationId: adminUpdateDriverStatus
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/DriverId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AccountStatusUpdate'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Driver'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Driver Service
-  /admin/vehicles:
-    get:
-      tags:
-      - Admin
-      summary: Danh sách Vehicle
-      description: 'FR-19, UC-16. Roles: ADMIN'
-      operationId: adminListVehicles
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: driverId
-        in: query
-        schema:
-          type: string
-          format: uuid
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VehicleList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Driver Service
-  /admin/vehicles/{vehicleId}:
+        '200': { description: Booking rejected or reassigned }
+  /api/bookings/{id}/cancel:
     put:
-      tags:
-      - Admin
-      summary: Cập nhật Vehicle
-      description: 'FR-19, UC-16. Roles: ADMIN'
-      operationId: adminUpdateVehicle
-      x-roles:
-      - ADMIN
+      tags: [Booking]
       parameters:
-      - $ref: '#/components/parameters/VehicleId'
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        content:
+          application/json: { schema: { type: object } }
+      responses:
+        '200': { description: Booking and related Trip canceled }
+  /api/bookings/{id}/status:
+    put:
+      tags: [Booking]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Booking status updated }
+  /api/trips:
+    post:
+      tags: [Trip]
+      description: Operator/Admin endpoint for direct Trip creation.
+      responses:
+        '201': { description: Trip created }
+    get:
+      tags: [Trip]
+      responses:
+        '200': { description: Trip history }
+  /api/trips/{id}:
+    get:
+      tags: [Trip]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Trip returned }
+  /api/trips/{id}/status:
+    put:
+      tags: [Trip]
+      parameters:
+        - $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VehicleInput'
+          application/json: { schema: { type: object } }
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Vehicle'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Driver Service
-  /admin/bookings:
+        '200': { description: Trip status updated }
+  /api/trips/{id}/rating:
     get:
-      tags:
-      - Admin
-      summary: Theo dõi Booking
-      description: 'FR-28, UC-22, BRL-24 (Admin chỉ theo dõi/hỗ trợ, không phân công Driver). Roles: ADMIN'
-      operationId: adminListBookings
-      x-roles:
-      - ADMIN
+      tags: [Trip]
       parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: status
-        in: query
-        schema:
-          $ref: '#/components/schemas/BookingStatus'
+        - $ref: '#/components/parameters/Id'
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BookingList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Booking Service
-  /admin/trips:
-    get:
-      tags:
-      - Admin
-      summary: Theo dõi Trip
-      description: 'FR-28, UC-22. Roles: ADMIN'
-      operationId: adminListTrips
-      x-roles:
-      - ADMIN
-      parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: status
-        in: query
-        schema:
-          $ref: '#/components/schemas/TripStatus'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TripList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-      x-service: Trip Service
-  /notifications:
-    get:
-      tags:
-      - Notification
-      summary: Xem danh sách thông báo
-      description: 'FR-29, UC-23, NFR-15. Roles: CUSTOMER, DRIVER. Thông báo trong hệ thống do Notification Service tạo từ các sự kiện Booking, Trip, Payment.'
-      operationId: listNotifications
-      x-roles:
-      - CUSTOMER
-      - DRIVER
-      parameters:
-      - $ref: '#/components/parameters/Page'
-      - $ref: '#/components/parameters/Size'
-      - name: unreadOnly
-        in: query
-        schema:
-          type: boolean
-          default: false
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/NotificationList'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-      x-service: Notification Service
-  /notifications/{notificationId}/read:
+        '200': { description: Rating returned }
     post:
-      tags:
-      - Notification
-      summary: Đánh dấu thông báo đã đọc
-      description: 'FR-29, UC-23. Roles: CUSTOMER, DRIVER (chủ sở hữu)'
-      operationId: markNotificationRead
-      x-roles:
-      - CUSTOMER
-      - DRIVER
+      tags: [Trip]
+      description: Reviewer identity is derived from the JWT.
       parameters:
-      - $ref: '#/components/parameters/NotificationId'
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json: { schema: { $ref: '#/components/schemas/Rating' } }
       responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Notification'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-      x-service: Notification Service
+        '201': { description: Rating submitted }
+  /api/payments:
+    post:
+      tags: [Payment]
+      description: Amount and customer identity are derived server-side.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201': { description: Payment created }
+    get:
+      tags: [Payment]
+      responses:
+        '200': { description: Payment returned/listed }
+  /api/payments/estimate/{tripId}:
+    get:
+      tags: [Payment]
+      parameters:
+        - $ref: '#/components/parameters/TripId'
+      responses:
+        '200': { description: Fare estimate }
+  /api/payments/{id}:
+    get:
+      tags: [Payment]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Payment returned }
+  /api/payments/{id}/process:
+    put:
+      tags: [Payment]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Payment processed }
+  /api/notifications:
+    post:
+      tags: [Notification]
+      responses:
+        '201': { description: Notification created }
+  /api/notifications/recipient/{recipientId}:
+    get:
+      tags: [Notification]
+      parameters:
+        - name: recipientId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Recipient notifications }
+  /api/notifications/{id}:
+    get:
+      tags: [Notification]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Notification returned }
+  /api/notifications/{id}/read:
+    put:
+      tags: [Notification]
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Notification marked as read }
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-  schemas:
-    RegisterRequest:
-      type: object
-      required:
-      - fullName
-      - phone
-      - email
-      - password
-      properties:
-        fullName:
-          type: string
-        phone:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          format: password
-          minLength: 8
-    Role:
-      type: string
-      enum:
-      - CUSTOMER
-      - DRIVER
-      - ADMIN
-    AccountStatus:
-      type: string
-      enum:
-      - ACTIVE
-      - LOCKED
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        fullName:
-          type: string
-        phone:
-          type: string
-        email:
-          type: string
-          format: email
-        role:
-          $ref: '#/components/schemas/Role'
-        status:
-          $ref: '#/components/schemas/AccountStatus'
-        createdAt:
-          type: string
-          format: date-time
-    Error:
-      type: object
-      required:
-      - code
-      - message
-      properties:
-        code:
-          type: string
-          description: Mã lỗi nghiệp vụ
-          enum:
-          - VALIDATION_ERROR
-          - UNAUTHORIZED
-          - FORBIDDEN
-          - NOT_FOUND
-          - ACCOUNT_ALREADY_EXISTS
-          - INVALID_CREDENTIALS
-          - ACCOUNT_LOCKED
-          - BOOKING_NOT_CANCELLABLE
-          - OFFER_EXPIRED
-          - OFFER_ALREADY_RESPONDED
-          - DRIVER_NOT_ACTIVE
-          - TRIP_INVALID_TRANSITION
-          - TRIP_NOT_IN_PROGRESS
-          - TRIP_NOT_COMPLETED
-          - PAYMENT_ALREADY_SUCCESS
-          - RATING_ALREADY_EXISTS
-          - INTERNAL_ERROR
-        message:
-          type: string
-        details:
-          type: array
-          items:
-            type: object
-            properties:
-              field:
-                type: string
-              issue:
-                type: string
-    LoginRequest:
-      type: object
-      required:
-      - identifier
-      - password
-      properties:
-        identifier:
-          type: string
-          description: Email hoặc số điện thoại
-        password:
-          type: string
-          format: password
-    AuthToken:
-      type: object
-      properties:
-        accessToken:
-          type: string
-        tokenType:
-          type: string
-          example: Bearer
-        expiresIn:
-          type: integer
-        role:
-          $ref: '#/components/schemas/Role'
-    UserUpdate:
-      type: object
-      properties:
-        fullName:
-          type: string
-        phone:
-          type: string
-        email:
-          type: string
-          format: email
-    BookingStatus:
-      type: string
-      enum:
-      - PENDING_DRIVER
-      - SENT_TO_DRIVER
-      - ACCEPTED
-      - CANCELLED
-      - NO_DRIVER_FOUND
-    Location:
-      type: object
-      required:
-      - address
-      properties:
-        address:
-          type: string
-        latitude:
-          type: number
-        longitude:
-          type: number
-    VehicleType:
-      type: string
-      enum:
-      - BIKE
-      - CAR_4_SEATS
-      - CAR_7_SEATS
-    Vehicle:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        driverId:
-          type: string
-          format: uuid
-        plateNumber:
-          type: string
-        type:
-          $ref: '#/components/schemas/VehicleType'
-        brand:
-          type: string
-        model:
-          type: string
-        color:
-          type: string
-        status:
-          type: string
-          enum:
-          - ACTIVE
-          - INACTIVE
-    DriverSummary:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        fullName:
-          type: string
-        phone:
-          type: string
-        averageRating:
-          type: number
-        vehicle:
-          $ref: '#/components/schemas/Vehicle'
-    Booking:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        customerId:
-          type: string
-          format: uuid
-        status:
-          $ref: '#/components/schemas/BookingStatus'
-        pickup:
-          $ref: '#/components/schemas/Location'
-        dropoff:
-          $ref: '#/components/schemas/Location'
-        vehicleType:
-          $ref: '#/components/schemas/VehicleType'
-        pickupTime:
-          type: string
-          format: date-time
-        note:
-          type: string
-        estimatedFare:
-          type: number
-          description: Do Booking Service tính (BRL-25)
-        driver:
-          $ref: '#/components/schemas/DriverSummary'
-        tripId:
-          type: string
-          format: uuid
-          nullable: true
-          description: Null cho đến khi Trip Service tạo Trip (sự kiện TripCreated)
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-    Pagination:
-      type: object
-      properties:
-        page:
-          type: integer
-        size:
-          type: integer
-        totalItems:
-          type: integer
-        totalPages:
-          type: integer
-    BookingList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Booking'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    BookingCreate:
-      type: object
-      required:
-      - pickup
-      - dropoff
-      - vehicleType
-      properties:
-        pickup:
-          $ref: '#/components/schemas/Location'
-        dropoff:
-          $ref: '#/components/schemas/Location'
-        vehicleType:
-          $ref: '#/components/schemas/VehicleType'
-        pickupTime:
-          type: string
-          format: date-time
-        note:
-          type: string
-    DriverActivityStatus:
-      type: string
-      enum:
-      - ONLINE
-      - OFFLINE
-      - BUSY
-    DriverStatusUpdate:
-      type: object
-      required:
-      - activityStatus
-      properties:
-        activityStatus:
-          $ref: '#/components/schemas/DriverActivityStatus'
-        latitude:
-          type: number
-        longitude:
-          type: number
-    Driver:
-      allOf:
-      - $ref: '#/components/schemas/User'
-      - type: object
-        properties:
-          activityStatus:
-            $ref: '#/components/schemas/DriverActivityStatus'
-          averageRating:
-            type: number
-          currentLocation:
-            $ref: '#/components/schemas/Location'
-    OfferStatus:
-      type: string
-      enum:
-      - PENDING
-      - ACCEPTED
-      - REJECTED
-      - EXPIRED
-    BookingOffer:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        bookingId:
-          type: string
-          format: uuid
-        status:
-          $ref: '#/components/schemas/OfferStatus'
-        pickup:
-          $ref: '#/components/schemas/Location'
-        dropoff:
-          $ref: '#/components/schemas/Location'
-        vehicleType:
-          $ref: '#/components/schemas/VehicleType'
-        estimatedFare:
-          type: number
-        expiresAt:
-          type: string
-          format: date-time
-    TripStatus:
-      type: string
-      enum:
-      - CREATED
-      - IN_PROGRESS
-      - COMPLETED
-    Trip:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        bookingId:
-          type: string
-          format: uuid
-        customerId:
-          type: string
-          format: uuid
-        driver:
-          $ref: '#/components/schemas/DriverSummary'
-        status:
-          $ref: '#/components/schemas/TripStatus'
-        pickup:
-          $ref: '#/components/schemas/Location'
-        dropoff:
-          $ref: '#/components/schemas/Location'
-        startedAt:
-          type: string
-          format: date-time
-          nullable: true
-        completedAt:
-          type: string
-          format: date-time
-          nullable: true
-        fare:
-          type: number
-          description: Lấy từ estimatedFare của Booking (BRL-25)
-        paymentId:
-          type: string
-          format: uuid
-          nullable: true
-          description: Null cho đến khi Payment Service tạo Payment (sự kiện PaymentCreated)
-        rated:
-          type: boolean
-    RejectRequest:
-      type: object
-      properties:
-        reason:
-          type: string
-    TripList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Trip'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    TripStatusUpdate:
-      type: object
-      required:
-      - status
-      properties:
-        status:
-          $ref: '#/components/schemas/TripStatus'
-    VehicleInput:
-      type: object
-      required:
-      - plateNumber
-      - type
-      properties:
-        plateNumber:
-          type: string
-        type:
-          $ref: '#/components/schemas/VehicleType'
-        brand:
-          type: string
-        model:
-          type: string
-        color:
-          type: string
-        status:
-          type: string
-          enum:
-          - ACTIVE
-          - INACTIVE
-    PaymentMethod:
-      type: string
-      enum:
-      - CASH
-      - ONLINE
-    PaymentStatus:
-      type: string
-      enum:
-      - PENDING
-      - PROCESSING
-      - SUCCESS
-      - FAILED
-    Payment:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        tripId:
-          type: string
-          format: uuid
-        amount:
-          type: number
-        method:
-          $ref: '#/components/schemas/PaymentMethod'
-        status:
-          $ref: '#/components/schemas/PaymentStatus'
-        failureReason:
-          type: string
-          nullable: true
-        paidAt:
-          type: string
-          format: date-time
-          nullable: true
-        transactionId:
-          type: string
-          nullable: true
-          description: Mã giao dịch nội bộ do Payment Service sinh
-    PayRequest:
-      type: object
-      required:
-      - method
-      properties:
-        method:
-          $ref: '#/components/schemas/PaymentMethod'
-    PayResponse:
-      type: object
-      properties:
-        payment:
-          $ref: '#/components/schemas/Payment'
-    Rating:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        tripId:
-          type: string
-          format: uuid
-        driverId:
-          type: string
-          format: uuid
-        customerId:
-          type: string
-          format: uuid
-        score:
-          type: integer
-        comment:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-    RatingCreate:
-      type: object
-      required:
-      - score
-      properties:
-        score:
-          type: integer
-          minimum: 1
-          maximum: 5
-        comment:
-          type: string
-          maxLength: 500
-    UserList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/User'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    AccountStatusUpdate:
-      type: object
-      required:
-      - status
-      properties:
-        status:
-          $ref: '#/components/schemas/AccountStatus'
-        reason:
-          type: string
-    DriverList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Driver'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    VehicleList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Vehicle'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    NotificationType:
-      type: string
-      enum:
-      - BOOKING_CREATED
-      - BOOKING_OFFER_CREATED
-      - BOOKING_ACCEPTED
-      - BOOKING_CANCELLED
-      - NO_DRIVER_AVAILABLE
-      - TRIP_CREATED
-      - TRIP_COMPLETED
-      - PAYMENT_COMPLETED
-      - PAYMENT_FAILED
-    Notification:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        type:
-          $ref: '#/components/schemas/NotificationType'
-        title:
-          type: string
-        message:
-          type: string
-        referenceId:
-          type: string
-          format: uuid
-          nullable: true
-          description: Id Booking, Trip hoặc Payment liên quan
-        read:
-          type: boolean
-        createdAt:
-          type: string
-          format: date-time
-    NotificationList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/Notification'
-        pagination:
-          $ref: '#/components/schemas/Pagination'
-    AcceptOfferResponse:
-      type: object
-      properties:
-        bookingId:
-          type: string
-          format: uuid
-        status:
-          $ref: '#/components/schemas/BookingStatus'
-        tripId:
-          type: string
-          format: uuid
-          nullable: true
-          description: Thường là null ngay sau khi accept
-  responses:
-    BadRequest:
-      description: Dữ liệu không hợp lệ (VALIDATION_ERROR)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Unauthorized:
-      description: Chưa xác thực (NFR-01)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Conflict:
-      description: Xung đột trạng thái nghiệp vụ
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    Forbidden:
-      description: Không đủ quyền theo vai trò (BRL-03)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
-    NotFound:
-      description: Không tìm thấy tài nguyên
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/Error'
   parameters:
-    Page:
-      name: page
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        default: 1
-    Size:
-      name: size
-      in: query
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 100
-        default: 20
-    BookingId:
-      name: bookingId
+    Id:
+      name: id
       in: path
       required: true
-      schema:
-        type: string
-        format: uuid
-    OfferId:
-      name: offerId
+      schema: { type: integer }
+    UserId:
+      name: userId
       in: path
       required: true
-      schema:
-        type: string
-        format: uuid
+      schema: { type: integer }
     TripId:
       name: tripId
       in: path
       required: true
-      schema:
-        type: string
-        format: uuid
-    VehicleId:
-      name: vehicleId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    PaymentId:
-      name: paymentId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    CustomerId:
-      name: customerId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    DriverId:
-      name: driverId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
-    NotificationId:
-      name: notificationId
-      in: path
-      required: true
-      schema:
-        type: string
-        format: uuid
+      schema: { type: integer }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+  responses:
+    Unauthorized:
+      description: Missing or invalid JWT
+    Forbidden:
+      description: Role or ownership check failed
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [phone, password, role]
+      properties:
+        phone: { type: string }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8, format: password }
+        role: { type: string, enum: [CUSTOMER, DRIVER, ADMIN, OPERATOR] }
+        fullName: { type: string }
+    LoginRequest:
+      type: object
+      required: [password]
+      properties:
+        identifier: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        password: { type: string, format: password }
+    BookingCreate:
+      type: object
+      required: [pickLat, pickLng, destLat, destLng, vehicleType]
+      properties:
+        pickLat: { type: number }
+        pickLng: { type: number }
+        destLat: { type: number }
+        destLng: { type: number }
+        vehicleType: { type: string }
+    Rating:
+      type: object
+      required: [rating]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        comment: { type: string }

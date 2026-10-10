@@ -76,6 +76,25 @@ async function completeTrip(tripId) {
   return trip;
 }
 
+async function cancelTrip(bookingId, reason) {
+  const trip = await Trip.findOne({ bookingId: Number(bookingId) });
+
+  if (!trip) {
+    throw new Error("TRIP_NOT_FOUND");
+  }
+
+  if (["COMPLETED", "CANCELED"].includes(trip.status)) {
+    throw new Error("TRIP_CANNOT_CANCEL");
+  }
+
+  trip.status = "CANCELED";
+  trip.canceledAt = new Date();
+  trip.canceledBy = "CUSTOMER";
+  trip.cancelReason = reason;
+
+  return trip.save();
+}
+
 async function getTrip(tripId) {
   const trip = await Trip.findOne({
     tripId: Number(tripId),
@@ -177,6 +196,7 @@ module.exports = {
   createTrip,
   startTrip,
   completeTrip,
+  cancelTrip,
   getTrip,
   createReview,
   getReview,

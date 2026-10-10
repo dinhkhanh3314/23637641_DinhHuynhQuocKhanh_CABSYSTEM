@@ -7,6 +7,7 @@ service TripService {
   rpc GetTrip (GetTripRequest) returns (TripResponse);
   rpc StartTrip (UpdateTripStatusRequest) returns (TripResponse);
   rpc CompleteTrip (UpdateTripStatusRequest) returns (TripResponse);
+  rpc CancelTrip (CancelTripRequest) returns (TripResponse);
   rpc SubmitReview (SubmitReviewRequest) returns (ReviewResponse);
   rpc GetReview (GetReviewRequest) returns (ReviewResponse);
 }
@@ -27,6 +28,11 @@ message GetTripRequest {
 
 message UpdateTripStatusRequest {
   int32 tripId = 1;
+}
+
+message CancelTripRequest {
+  int32 bookingId = 1;
+  string reason = 2;
 }
 
 message SubmitReviewRequest {

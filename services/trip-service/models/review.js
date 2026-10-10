@@ -46,6 +46,7 @@ const reviewSchema = new mongoose.Schema(
       enum: ["PENDING", "SUBMITTED"],
       default: "PENDING",
       required: true,
+    },
   },
   {
     timestamps: true,

@@ -126,7 +126,7 @@ router.get("/:id/location", async (req, res) => {
 
 router.get("/nearby", async (req, res) => {
   try {
-    const { longitude, latitude, radius } = req.query;
+    const { longitude, latitude, radius, page, limit } = req.query;
 
     if (
       longitude === undefined ||
@@ -138,10 +138,21 @@ router.get("/nearby", async (req, res) => {
       });
     }
 
-    const drivers = await getNearbyDrivers(latitude, longitude, radius);
+    const result = await getNearbyDrivers(
+      latitude,
+      longitude,
+      radius,
+      page,
+      limit,
+    );
 
     res.json({
-      drivers,
+      drivers: result.drivers,
+      pagination: {
+        page: result.page,
+        limit: result.limit,
+        total: result.total,
+      },
     });
   } catch (error) {
     console.error(error);

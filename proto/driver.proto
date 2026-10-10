@@ -145,6 +145,8 @@ message GetNearbyDriversRequest {
   double latitude = 1;
   double longitude = 2;
   double radius = 3;
+  int32 page = 4;
+  int32 limit = 5;
 }
 
 message NearbyDriver {
@@ -159,4 +161,7 @@ message NearbyDriver {
 
 message NearbyDriversResponse {
   repeated NearbyDriver drivers = 1;
+  int32 page = 2;
+  int32 limit = 3;
+  int32 total = 4;
 }

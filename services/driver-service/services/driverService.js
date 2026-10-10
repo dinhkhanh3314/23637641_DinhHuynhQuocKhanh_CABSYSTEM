@@ -213,7 +213,7 @@ async function getDriverLocation(driverId) {
   };
 }
 
-async function getNearbyDrivers(latitude, longitude, radius) {
+async function getNearbyDrivers(latitude, longitude, radius, page = 1, limit = 20) {
   const results = await redisClient.geoSearchWith(
     "driver:locations",
     {
@@ -256,7 +256,16 @@ async function getNearbyDrivers(latitude, longitude, radius) {
     }
   }
 
-  return onlineDrivers;
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
+  const start = (safePage - 1) * safeLimit;
+
+  return {
+    drivers: onlineDrivers.slice(start, start + safeLimit),
+    page: safePage,
+    limit: safeLimit,
+    total: onlineDrivers.length,
+  };
 }
 
 module.exports = {

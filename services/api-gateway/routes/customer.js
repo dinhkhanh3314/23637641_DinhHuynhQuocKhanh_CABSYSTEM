@@ -5,12 +5,13 @@ const {
   updateCustomer,
 } = require("../grpc/customerClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
+const { requireRoles } = require("../middlewares/auth");
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post("/", requireRoles("CUSTOMER"), async (req, res) => {
   try {
-    res.status(201).json(await createCustomer({ user_id: req.body.userId }));
+    res.status(201).json(await createCustomer({ user_id: req.user.userId }));
   } catch (error) {
     console.error(error);
     const mapped = grpcErrorToHttp(error);
@@ -20,6 +21,9 @@ router.post("/", async (req, res) => {
 
 router.get("/:userId", async (req, res) => {
   try {
+    if (String(req.params.userId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: "Can only access your own customer profile" });
+    }
     res.json(await getCustomer(req.params.userId));
   } catch (error) {
     console.error(error);
@@ -30,6 +34,9 @@ router.get("/:userId", async (req, res) => {
 
 router.put("/:userId", async (req, res) => {
   try {
+    if (String(req.params.userId) !== String(req.user.userId)) {
+      return res.status(403).json({ message: "Can only update your own customer profile" });
+    }
     res.json(await updateCustomer(req.params.userId, req.body));
   } catch (error) {
     console.error(error);

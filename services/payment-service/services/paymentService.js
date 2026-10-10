@@ -49,6 +49,7 @@ async function createPayment(data) {
   const tripId = Number(data.tripId);
   const customerId = Number(data.customerId);
   const paymentMethod = data.paymentMethod;
+  const idempotencyKey = data.idempotencyKey;
 
   if (!Number.isInteger(tripId) || tripId <= 0) {
     throw new Error("INVALID_TRIP_ID");
@@ -60,6 +61,15 @@ async function createPayment(data) {
 
   if (!paymentMethod) {
     throw new Error("INVALID_PAYMENT_METHOD");
+  }
+
+  if (idempotencyKey) {
+    const existingByKey = await prisma.payment.findUnique({
+      where: { idempotencyKey },
+    });
+    if (existingByKey) {
+      return existingByKey;
+    }
   }
 
   const existingPayment = await prisma.payment.findUnique({
@@ -86,6 +96,7 @@ async function createPayment(data) {
       customerId,
       amount,
       paymentMethod,
+      idempotencyKey: idempotencyKey || null,
       status: "PENDING",
     },
   });
@@ -200,9 +211,53 @@ async function processPayment(paymentId) {
   }
 }
 
+async function handlePaymentWebhook(data) {
+  const paymentId = Number(data.paymentId);
+  if (!Number.isInteger(paymentId) || paymentId <= 0) {
+    throw new Error("INVALID_PAYMENT_ID");
+  }
+
+  const payment = await prisma.payment.findUnique({
+    where: { id: paymentId },
+  });
+  if (!payment) {
+    throw new Error("PAYMENT_NOT_FOUND");
+  }
+
+  if (payment.status !== "PENDING") {
+    return payment;
+  }
+
+  const succeeded = data.status === "SUCCESS";
+  const updatedPayment = await prisma.payment.update({
+    where: { id: paymentId },
+    data: succeeded
+      ? {
+          status: "PAID",
+          transactionId: data.transactionId || null,
+          paidAt: new Date(),
+        }
+      : {
+          status: "FAILED",
+          failedAt: new Date(),
+          failureReason: data.message || "Payment failed",
+        },
+  });
+
+  await publishEvent("payment.events", "PaymentProcessed", {
+    paymentId: updatedPayment.id,
+    tripId: updatedPayment.tripId,
+    customerId: updatedPayment.customerId,
+    status: updatedPayment.status,
+  });
+
+  return updatedPayment;
+}
+
 module.exports = {
   createPayment,
   calculateFare,
   getPayment,
   processPayment,
+  handlePaymentWebhook,
 };

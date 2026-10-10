@@ -37,6 +37,13 @@ function completeTrip(tripId) {
   return call("completeTrip", { tripId: Number(tripId) });
 }
 
+function cancelTrip(bookingId, reason) {
+  return call("cancelTrip", {
+    bookingId: Number(bookingId),
+    reason: reason || "",
+  });
+}
+
 function submitReview(data) {
   return call("submitReview", {
     tripId: Number(data.tripId),
@@ -58,6 +65,7 @@ module.exports = {
   getTrip,
   startTrip,
   completeTrip,
+  cancelTrip,
   submitReview,
   getReview,
 };

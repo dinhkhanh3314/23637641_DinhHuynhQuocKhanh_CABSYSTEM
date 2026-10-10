@@ -32,6 +32,12 @@ router.post("/", async (req, res) => {
 
 router.get("/recipient/:recipientId", async (req, res) => {
   try {
+    if (
+      !["OPERATOR", "ADMIN"].includes(req.user.role) &&
+      String(req.params.recipientId) !== String(req.user.userId)
+    ) {
+      return res.status(403).json({ message: "Can only access your own notifications" });
+    }
     const result = await getNotificationsByRecipient(req.params.recipientId);
     res.json({ notifications: result.notifications || [] });
   } catch (error) {

@@ -13,26 +13,24 @@ const consumer = kafka.consumer({
   groupId: process.env.KAFKA_GROUP_ID || "notification-service",
 });
 
-function notificationFromEvent(event) {
+function notificationsFromEvent(event) {
   const data = event.data || {};
-  const recipientId = data.customerId || data.driverId;
+  const recipients = [
+    data.customerId && { recipientId: data.customerId, recipientType: "CUSTOMER" },
+    data.driverId && { recipientId: data.driverId, recipientType: "DRIVER" },
+  ].filter(Boolean);
 
-  if (!recipientId) {
+  if (recipients.length === 0) {
     throw new Error(`Event ${event.eventType} has no notification recipient`);
   }
 
-  const notificationId = Number(
-    String(Date.now()).slice(-9),
-  );
-
-  return {
-    notificationId,
-    recipientId,
-    recipientType: data.driverId ? "DRIVER" : "CUSTOMER",
+  return recipients.map((recipient, index) => ({
+    notificationId: Number(`${Date.now()}${index}`.slice(-9)),
+    ...recipient,
     type: event.eventType,
     title: event.eventType,
     message: `Event ${event.eventType} was received`,
-  };
+  }));
 }
 
 async function startNotificationConsumer() {
@@ -71,8 +69,10 @@ async function startNotificationConsumer() {
 
       try {
         const event = JSON.parse(message.value.toString());
-        const notification = notificationFromEvent(event);
-        await createNotification(notification);
+        const notifications = notificationsFromEvent(event);
+        for (const notification of notifications) {
+          await createNotification(notification);
+        }
         console.log(
           `Notification created from ${topic}/${event.eventType}`,
         );

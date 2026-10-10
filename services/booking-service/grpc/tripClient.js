@@ -45,7 +45,20 @@ function getTrip(tripId) {
   });
 }
 
+function cancelTrip(bookingId, reason) {
+  return new Promise((resolve, reject) => {
+    tripClient.cancelTrip({ bookingId, reason }, (error, response) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(response);
+    });
+  });
+}
+
 module.exports = {
   createTrip,
   getTrip,
+  cancelTrip,
 };

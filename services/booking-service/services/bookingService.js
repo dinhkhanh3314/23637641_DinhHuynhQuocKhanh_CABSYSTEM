@@ -1,7 +1,7 @@
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
 const { getNearbyDrivers } = require("../grpc/driverClient");
-const { createTrip } = require("../grpc/tripClient");
+const { createTrip, cancelTrip } = require("../grpc/tripClient");
 const { publishEvent } = require("../kafka/eventBus");
 
 const DRIVER_RESPONSE_TIMEOUT_MS = Number(
@@ -48,16 +48,22 @@ async function createBooking(data) {
   return assignedBooking;
 }
 
-async function getBooking(id) {
-  return prisma.booking.findUnique({
+async function getBooking(id, customerId) {
+  return prisma.booking.findFirst({
     where: {
       id: Number(id),
+      ...(customerId ? { customerId: Number(customerId) } : {}),
     },
   });
 }
 
-async function getBookings() {
+async function getBookings(customerId, page = 1, limit = 20) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
   return prisma.booking.findMany({
+    where: customerId ? { customerId: Number(customerId) } : undefined,
+    skip: (safePage - 1) * safeLimit,
+    take: safeLimit,
     orderBy: {
       createdAt: "desc",
     },
@@ -116,6 +122,7 @@ async function cancelBooking(id, cancelReason) {
       "SEARCHING_DRIVER",
       "DRIVER_ASSIGNED",
       "DRIVER_ACCEPTED",
+      "IN_PROGRESS",
     ].includes(booking.status)
   ) {
     throw new Error("BOOKING_CANNOT_CANCEL");
@@ -125,7 +132,7 @@ async function cancelBooking(id, cancelReason) {
     throw new Error("CANCEL_REASON_REQUIRED");
   }
 
-  return prisma.booking.update({
+  const canceledBooking = await prisma.booking.update({
     where: {
       id: Number(id),
     },
@@ -134,6 +141,27 @@ async function cancelBooking(id, cancelReason) {
       cancelReason: cancelReason.trim(),
     },
   });
+
+  if (["DRIVER_ACCEPTED", "IN_PROGRESS"].includes(booking.status)) {
+    try {
+      await cancelTrip(booking.id, cancelReason.trim());
+    } catch (error) {
+      if (!["TRIP_NOT_FOUND", "5"].includes(error.details) &&
+          error.message !== "TRIP_NOT_FOUND") {
+        throw error;
+      }
+    }
+  }
+
+  await publishEvent("booking.events", "BookingCanceled", {
+    bookingId: canceledBooking.id,
+    customerId: canceledBooking.customerId,
+    driverId: canceledBooking.driverId,
+    status: canceledBooking.status,
+    cancelReason: canceledBooking.cancelReason,
+  });
+
+  return canceledBooking;
 }
 
 async function acceptBooking(id) {
@@ -293,11 +321,15 @@ async function findAndAssignNextDriver(bookingId) {
     throw new Error("BOOKING_NOT_FOUND");
   }
 
-  const drivers = await getNearbyDrivers(
+  const driverResult = await getNearbyDrivers(
     Number(booking.pickupLatitude),
     Number(booking.pickupLongitude),
     1,
   );
+
+  const drivers = Array.isArray(driverResult)
+    ? driverResult
+    : driverResult.drivers || [];
 
   if (drivers.length === 0) {
     return prisma.booking.update({

@@ -8,6 +8,7 @@ const {
   getReview,
 } = require("../grpc/tripClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
+const { requireRoles } = require("../middlewares/auth");
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ function handleError(res, error) {
   return res.status(mapped.status).json({ message: mapped.message });
 }
 
-router.post("/", async (req, res) => {
+router.post("/", requireRoles("OPERATOR", "ADMIN"), async (req, res) => {
   try {
     const trip = await createTrip(req.body);
     res.status(201).json({ trip });
@@ -28,14 +29,26 @@ router.post("/", async (req, res) => {
 
 router.get("/:id", async (req, res) => {
   try {
-    res.json({ trip: await getTrip(req.params.id) });
+    const trip = await getTrip(req.params.id);
+    if (
+      !["OPERATOR", "ADMIN"].includes(req.user.role) &&
+      Number(trip.customerId) !== Number(req.user.userId) &&
+      Number(trip.driverId) !== Number(req.user.userId)
+    ) {
+      return res.status(403).json({ message: "Trip belongs to another user" });
+    }
+    res.json({ trip });
   } catch (error) {
     handleError(res, error);
   }
 });
 
-router.put("/:id/status", async (req, res) => {
+router.put("/:id/status", requireRoles("DRIVER"), async (req, res) => {
   try {
+    const trip = await getTrip(req.params.id);
+    if (Number(trip.driverId) !== Number(req.user.userId)) {
+      return res.status(403).json({ message: "Trip is assigned to another driver" });
+    }
     const action =
       req.body.status === "IN_PROGRESS" ? startTrip : completeTrip;
     if (!["IN_PROGRESS", "COMPLETED"].includes(req.body.status)) {
@@ -47,15 +60,15 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
-router.post("/:id/rating", async (req, res) => {
+router.post("/:id/rating", requireRoles("CUSTOMER"), async (req, res) => {
   try {
-    if (!Number.isInteger(Number(req.body.reviewerId))) {
-      return res.status(400).json({ message: "reviewerId is required" });
+    const trip = await getTrip(req.params.id);
+    if (Number(trip.customerId) !== Number(req.user.userId)) {
+      return res.status(403).json({ message: "Can only rate your own trip" });
     }
-
     const review = await submitReview({
       tripId: req.params.id,
-      reviewerId: req.body.reviewerId,
+      reviewerId: req.user.userId,
       rating: req.body.rating,
       comment: req.body.comment,
     });
@@ -65,9 +78,9 @@ router.post("/:id/rating", async (req, res) => {
   }
 });
 
-router.get("/:id/rating", async (req, res) => {
+router.get("/:id/rating", requireRoles("CUSTOMER"), async (req, res) => {
   try {
-    const review = await getReview(req.params.id, req.query.reviewerId);
+    const review = await getReview(req.params.id, req.user.userId);
     res.json({ review });
   } catch (error) {
     handleError(res, error);

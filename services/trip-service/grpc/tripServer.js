@@ -7,6 +7,7 @@ const {
   getTrip,
   startTrip,
   completeTrip,
+  cancelTrip,
   createReview,
   getReview,
 } = require("../services/tripService");
@@ -52,6 +53,7 @@ function handleError(callback, error) {
       : message === "TRIP_ALREADY_EXISTS" ||
           message === "TRIP_CANNOT_START" ||
           message === "TRIP_CANNOT_COMPLETE" ||
+          message === "TRIP_CANNOT_CANCEL" ||
           message === "REVIEW_ALREADY_EXISTS"
         ? grpc.status.FAILED_PRECONDITION
         : message === "INVALID_RATING"
@@ -112,25 +114,35 @@ async function completeTripHandler(call, callback) {
     handleError(callback, error);
   }
 
-  async function submitReviewHandler(call, callback) {
-    try {
-      const review = await createReview(call.request);
-      callback(null, toReviewResponse(review));
-    } catch (error) {
-      handleError(callback, error);
-    }
-  }
+}
 
-  async function getReviewHandler(call, callback) {
-    try {
-      const review = await getReview(
-        call.request.tripId,
-        call.request.reviewerId,
-      );
-      callback(null, toReviewResponse(review));
-    } catch (error) {
-      handleError(callback, error);
-    }
+async function cancelTripHandler(call, callback) {
+  try {
+    const trip = await cancelTrip(call.request.bookingId, call.request.reason);
+    callback(null, toTripResponse(trip));
+  } catch (error) {
+    handleError(callback, error);
+  }
+}
+
+async function submitReviewHandler(call, callback) {
+  try {
+    const review = await createReview(call.request);
+    callback(null, toReviewResponse(review));
+  } catch (error) {
+    handleError(callback, error);
+  }
+}
+
+async function getReviewHandler(call, callback) {
+  try {
+    const review = await getReview(
+      call.request.tripId,
+      call.request.reviewerId,
+    );
+    callback(null, toReviewResponse(review));
+  } catch (error) {
+    handleError(callback, error);
   }
 }
 
@@ -142,6 +154,7 @@ function startTripGrpcServer() {
     getTrip: getTripHandler,
     startTrip: startTripHandler,
     completeTrip: completeTripHandler,
+    cancelTrip: cancelTripHandler,
     submitReview: submitReviewHandler,
     getReview: getReviewHandler,
   });
