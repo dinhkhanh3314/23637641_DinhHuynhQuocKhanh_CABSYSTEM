@@ -116,5 +116,8 @@ docker compose up -d
 5. Phần 12 Kafka đã bắt đầu: Booking/Payment publish event và Notification consume
    event để tạo notification. Chưa có transactional outbox; full runtime Kafka
    verification và các event còn lại vẫn là công việc tiếp theo.
+6. Phần 13 Integration đã bắt đầu: bổ sung smoke test health cho Gateway và tám
+   service, tài liệu thứ tự khởi động/cấu hình cổng, và chuẩn hóa cấu hình Kafka
+   mẫu `localhost:9092`. Chưa chạy full business flow runtime.
 
 Khi gặp lỗi ở cuộc trò chuyện mới, cung cấp service đang chạy, log đầy đủ, URL/method/body Postman, status hoặc gRPC code và ID nghiệp vụ liên quan.

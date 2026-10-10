@@ -50,7 +50,7 @@ services:
 
   mock-payment-provider:
     build:
-      context: ./infrastructure/mock-payment-provider
+      context: ./mock-payment-provider
     container_name: cabsystem-mock-payment-provider
     restart: unless-stopped
     ports:
