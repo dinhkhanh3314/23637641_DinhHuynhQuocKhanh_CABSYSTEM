@@ -5,15 +5,14 @@ của CAB System.
 
 ## Tài liệu chính
 
-| Nội dung | Tài liệu |
-|---|---|
-| Kiến trúc microservice | [Thiết kế kiến trúc CAB System](architecture/CABSystem_Microservice_Architecture.md) |
-| Tổng quan và yêu cầu | [Tài liệu yêu cầu hệ thống](requirements/) |
-| API Gateway | [Đặc tả API Gateway](api/api_docs.yaml) |
-| Chạy Compose và smoke test | [Hướng dẫn tích hợp và Docker Compose](integration/README.md) |
-| Kafka và event | [Tài liệu Kafka và event](kafka/README.md) |
-| Security | [Tài liệu bảo mật](security/README.md) |
-| Checklist 30 tiêu chí | [Checklist kiểm thử mục 1-30](../TEST_01_30.md) |
+| Nội dung                   | Tài liệu                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------ |
+| Kiến trúc microservice     | [Thiết kế kiến trúc CAB System](architecture/CABSystem_Microservice_Architecture.md) |
+| Tổng quan và yêu cầu       | [Tài liệu yêu cầu hệ thống](requirements/)                                           |
+| API Gateway                | [Đặc tả API Gateway](api/api_docs.yaml)                                              |
+| Chạy Compose và smoke test | [Hướng dẫn tích hợp và Docker Compose](integration/README.md)                        |
+| Kafka và event             | [Tài liệu Kafka và event](kafka/README.md)                                           |
+| Security                   | [Tài liệu bảo mật](security/README.md)                                               |
 
 ## Runtime hiện tại
 
