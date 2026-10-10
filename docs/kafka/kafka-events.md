@@ -56,7 +56,7 @@ notification. Có thể đọc notification qua Gateway:
 
 ```http
 GET http://localhost:3000/api/notifications/recipient/{recipientId}
-Authorization: Bearer <access_token>
+Authorization: Bearer <jwt-token>`
 ```
 
 ## Giới hạn hiện tại

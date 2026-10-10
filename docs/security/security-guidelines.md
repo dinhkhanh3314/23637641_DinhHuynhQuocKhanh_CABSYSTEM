@@ -2,7 +2,7 @@
 
 ## Cơ chế hiện có
 
-- API Gateway xác thực JWT từ header `Authorization: Bearer <token>`.
+- API Gateway xác thực JWT từ header `Authorization: Bearer <jwt-token>`.
 - Token sai, token hết hạn hoặc token bị sửa chữ ký trả HTTP `401`.
 - Thiếu `JWT_SECRET` là lỗi cấu hình, không tự chạy ở chế độ không bảo vệ.
 - Các nhóm Customer, Driver, Booking, Trip, Payment và Notification yêu cầu
@@ -47,7 +47,7 @@ POST /api/auth/driver/set-password
 Ví dụ:
 
 ```http
-Authorization: Bearer <access_token>
+Authorization: Bearer <jwt-token>`
 ```
 
 ## Các kiểm thử bảo mật cần chạy
