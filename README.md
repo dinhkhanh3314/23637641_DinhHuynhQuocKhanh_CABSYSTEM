@@ -170,7 +170,7 @@ API được xây dựng theo kiến trúc RESTful API.
 
 Tài liệu API được lưu tại:
 
-[API Documentation](docs/api_docs.yaml)
+[API Documentation](docs/api/api_docs.yaml)
 
 ## 11. Testing
 
@@ -213,7 +213,7 @@ bao gồm:
 
 ### API
 
-- [API Documentation](docs/api_docs.yaml)
+- [API Documentation](docs/api/api_docs.yaml)
 
 ### Testing
 
