@@ -2,6 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const { PrismaPg } = require("@prisma/adapter-pg");
 const axios = require("axios");
 const { publishEvent } = require("../kafka/eventBus");
+const { getTrip } = require("../grpc/tripClient");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -11,10 +12,42 @@ const prisma = new PrismaClient({
   adapter,
 });
 
+function calculateDistanceKm(fromLatitude, fromLongitude, toLatitude, toLongitude) {
+  const earthRadiusKm = 6371;
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const latitudeDelta = toRadians(toLatitude - fromLatitude);
+  const longitudeDelta = toRadians(toLongitude - fromLongitude);
+  const a =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(toRadians(fromLatitude)) *
+      Math.cos(toRadians(toLatitude)) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+async function calculateFare(tripId) {
+  const trip = await getTrip(tripId);
+  const distanceKm = calculateDistanceKm(
+    trip.pickupLatitude,
+    trip.pickupLongitude,
+    trip.destinationLatitude,
+    trip.destinationLongitude,
+  );
+
+  return {
+    tripId: Number(tripId),
+    distanceKm: Number(distanceKm.toFixed(2)),
+    baseFare: 10000,
+    pricePerKm: 15000,
+    totalFare: Math.round((10000 + distanceKm * 15000) / 100) * 100,
+    currency: "VND",
+  };
+}
+
 async function createPayment(data) {
   const tripId = Number(data.tripId);
   const customerId = Number(data.customerId);
-  const amount = Number(data.amount);
   const paymentMethod = data.paymentMethod;
 
   if (!Number.isInteger(tripId) || tripId <= 0) {
@@ -23,10 +56,6 @@ async function createPayment(data) {
 
   if (!Number.isInteger(customerId) || customerId <= 0) {
     throw new Error("INVALID_CUSTOMER_ID");
-  }
-
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error("INVALID_AMOUNT");
   }
 
   if (!paymentMethod) {
@@ -42,6 +71,14 @@ async function createPayment(data) {
   if (existingPayment) {
     throw new Error("PAYMENT_ALREADY_EXISTS");
   }
+
+  const trip = await getTrip(tripId);
+  if (Number(trip.customerId) !== customerId) {
+    throw new Error("CUSTOMER_TRIP_MISMATCH");
+  }
+
+  const fare = await calculateFare(tripId);
+  const amount = fare.totalFare;
 
   const payment = await prisma.payment.create({
     data: {
@@ -165,6 +202,7 @@ async function processPayment(paymentId) {
 
 module.exports = {
   createPayment,
+  calculateFare,
   getPayment,
   processPayment,
 };

@@ -43,11 +43,12 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const identifier = req.body.email || req.body.phone || req.body.identifier;
+    const { password } = req.body;
 
     if (!identifier || !password) {
       return res.status(400).json({
-        message: "Identifier and password are required",
+        message: "Email or phone and password are required",
       });
     }
 

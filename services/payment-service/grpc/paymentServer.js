@@ -4,6 +4,7 @@ const path = require("path");
 
 const {
   createPayment,
+  calculateFare,
   getPayment,
   processPayment,
 } = require("../services/paymentService");
@@ -45,7 +46,7 @@ function mapError(error) {
     PAYMENT_CANNOT_PROCESS: grpc.status.FAILED_PRECONDITION,
     INVALID_TRIP_ID: grpc.status.INVALID_ARGUMENT,
     INVALID_CUSTOMER_ID: grpc.status.INVALID_ARGUMENT,
-    INVALID_AMOUNT: grpc.status.INVALID_ARGUMENT,
+    CUSTOMER_TRIP_MISMATCH: grpc.status.PERMISSION_DENIED,
     INVALID_PAYMENT_METHOD: grpc.status.INVALID_ARGUMENT,
   };
 
@@ -86,6 +87,23 @@ async function ProcessPayment(call, callback) {
     console.error("ProcessPayment gRPC error:", error);
     callback(mapError(error));
   }
+
+  async function EstimateFare(call, callback) {
+    try {
+      const fare = await calculateFare(call.request.id);
+      callback(null, {
+        trip_id: fare.tripId,
+        distance_km: fare.distanceKm,
+        base_fare: fare.baseFare,
+        price_per_km: fare.pricePerKm,
+        total_fare: fare.totalFare,
+        currency: fare.currency,
+      });
+    } catch (error) {
+      console.error("EstimateFare gRPC error:", error);
+      callback(mapError(error));
+    }
+  }
 }
 
 function startPaymentGrpcServer() {
@@ -94,6 +112,7 @@ function startPaymentGrpcServer() {
     CreatePayment,
     GetPayment,
     ProcessPayment,
+    EstimateFare,
   });
 
   const port = process.env.PAYMENT_GRPC_PORT || "50056";

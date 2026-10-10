@@ -3,6 +3,7 @@ const {
   createPayment,
   getPayment,
   processPayment,
+  estimateFare,
 } = require("../grpc/paymentClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
 
@@ -19,9 +20,17 @@ router.post("/", async (req, res) => {
     res.status(201).json({ payment: await createPayment({
       trip_id: req.body.tripId,
       customer_id: req.body.customerId,
-      amount: req.body.amount,
-      payment_method: req.body.paymentMethod,
+      amount: req.body.amount || 0,
+      payment_method: req.body.paymentMethod || "MOCK_CARD",
     }) });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+router.get("/estimate/:tripId", async (req, res) => {
+  try {
+    res.json({ fare: await estimateFare(req.params.tripId) });
   } catch (error) {
     handleError(res, error);
   }

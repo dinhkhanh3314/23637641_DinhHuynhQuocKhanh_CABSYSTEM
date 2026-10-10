@@ -33,4 +33,8 @@ function processPayment(id) {
   return call("ProcessPayment", { id: Number(id) });
 }
 
-module.exports = { createPayment, getPayment, processPayment };
+function estimateFare(tripId) {
+  return call("EstimateFare", { id: Number(tripId) });
+}
+
+module.exports = { createPayment, getPayment, processPayment, estimateFare };

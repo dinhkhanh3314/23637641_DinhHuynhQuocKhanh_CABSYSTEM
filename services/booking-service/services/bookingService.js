@@ -4,6 +4,10 @@ const { getNearbyDrivers } = require("../grpc/driverClient");
 const { createTrip } = require("../grpc/tripClient");
 const { publishEvent } = require("../kafka/eventBus");
 
+const DRIVER_RESPONSE_TIMEOUT_MS = Number(
+  process.env.DRIVER_RESPONSE_TIMEOUT_MS || 300000,
+);
+
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
@@ -163,8 +167,9 @@ async function acceptBooking(id) {
     status: bookingAccepted.status,
   });
 
+  let trip;
   try {
-    await createTrip({
+    trip = await createTrip({
       bookingId: bookingAccepted.id,
       customerId: bookingAccepted.customerId,
       driverId: bookingAccepted.driverId,
@@ -184,7 +189,7 @@ async function acceptBooking(id) {
     }
   }
 
-  return bookingAccepted;
+  return { booking: bookingAccepted, trip };
 }
 
 async function rejectBooking(id) {
@@ -274,7 +279,7 @@ function startDriverTimeout(bookingId) {
     } catch (error) {
       console.error(`Booking ${bookingId}: timeout error`, error);
     }
-  }, 60000);
+  }, DRIVER_RESPONSE_TIMEOUT_MS);
 }
 
 async function findAndAssignNextDriver(bookingId) {

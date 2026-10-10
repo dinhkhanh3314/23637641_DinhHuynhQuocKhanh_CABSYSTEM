@@ -188,8 +188,6 @@ async function registerDriver(data) {
       color,
     });
 
-    await redisClient.del(`driver:otp:verified:${phone}`);
-
     return {
       message: "Gửi hồ sơ tài xế thành công",
       userId: user.id,
@@ -239,8 +237,6 @@ async function setDriverPassword(phone, password) {
       passwordHash,
     },
   });
-
-  await redisClient.del(`driver:otp:verified:${phone}`);
 
   return {
     message: "Đặt mật khẩu thành công",

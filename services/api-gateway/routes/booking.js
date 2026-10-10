@@ -22,11 +22,11 @@ function handleError(res, error) {
 router.post("/", async (req, res) => {
   try {
     const booking = await createBooking({
-      customer_id: req.body.customerId,
-      pickup_latitude: req.body.pickupLatitude,
-      pickup_longitude: req.body.pickupLongitude,
-      destination_latitude: req.body.destinationLatitude,
-      destination_longitude: req.body.destinationLongitude,
+      customer_id: req.user.userId,
+      pickup_latitude: req.body.pickLat,
+      pickup_longitude: req.body.pickLng,
+      destination_latitude: req.body.destLat,
+      destination_longitude: req.body.destLng,
       vehicle_type: req.body.vehicleType,
     });
 
@@ -74,10 +74,11 @@ router.put("/:id/status", async (req, res) => {
 
 router.put("/:id/accept", async (req, res) => {
   try {
-    const booking = await acceptBooking(req.params.id);
+    const result = await acceptBooking(req.params.id);
     res.json({
       message: "Tài xế đã nhận chuyến",
-      booking,
+      booking: result.booking,
+      trip: result.trip,
     });
   } catch (error) {
     handleError(res, error);

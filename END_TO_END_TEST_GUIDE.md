@@ -524,11 +524,10 @@ Body:
 
 ```json
 {
-  "customerId": {{customer_id}},
-  "pickupLatitude": 10.7769,
-  "pickupLongitude": 106.7009,
-  "destinationLatitude": 10.8231,
-  "destinationLongitude": 106.6297,
+  "pickLat": 10.7769,
+  "pickLng": 106.7009,
+  "destLat": 10.8231,
+  "destLng": 106.6297,
   "vehicleType": "CAR"
 }
 ```
@@ -536,7 +535,8 @@ Body:
 Luu `booking_id`. Kiem tra:
 
 - Booking co duoc tao.
-- `customerId` dung customer da test.
+- `customerId` duoc lay tu JWT Customer dang dang nhap.
+- Driver co 5 phut de accept hoac reject cuoc.
 - `driverId` la driver gan dung, hoac `0/null` va status `NO_DRIVER`.
 - Booking Service log viec goi Driver gRPC.
 - Notification Service log:
@@ -565,6 +565,7 @@ Kiem tra:
 - Booking chuyen `DRIVER_ACCEPTED`.
 - Booking Service goi Trip Service bang gRPC.
 - Trip moi duoc tao.
+- Response co object `trip` va `trip.tripId`; luu gia tri nay vao `trip_id`.
 - Notification Service nhan `DriverAccepted`.
 
 ### 10.4 Driver reject
@@ -685,6 +686,14 @@ gia mot lan cho mot Trip.
 
 ### 12.1 Tao payment
 
+Xem gia truoc khi tao payment:
+
+```http
+GET {{base_url}}/api/payments/estimate/{{trip_id}}
+```
+
+Response tra ve `distanceKm`, `baseFare`, `pricePerKm` va `totalFare`.
+
 ```http
 POST {{base_url}}/api/payments
 Content-Type: application/json
@@ -695,11 +704,12 @@ Body:
 ```json
 {
   "tripId": {{trip_id}},
-  "customerId": {{customer_id}},
-  "amount": 100000,
-  "paymentMethod": "CASH"
+  "paymentMethod": "MOCK_CARD"
 }
 ```
+
+`customerId` duoc lay tu JWT va `amount` duoc tu dong tinh theo khoang cach
+Trip. Neu bo qua `paymentMethod`, he thong mac dinh dung `MOCK_CARD`.
 
 Luu `payment_id`. Trang thai ban dau mong doi:
 

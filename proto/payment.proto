@@ -6,6 +6,7 @@ service PaymentService {
   rpc CreatePayment (CreatePaymentRequest) returns (PaymentResponse);
   rpc GetPayment (GetPaymentRequest) returns (PaymentResponse);
   rpc ProcessPayment (GetPaymentRequest) returns (PaymentResponse);
+  rpc EstimateFare (GetPaymentRequest) returns (FareResponse);
 }
 
 message CreatePaymentRequest {
@@ -30,4 +31,13 @@ message PaymentResponse {
   string failure_reason = 8;
   string paid_at = 9;
   string failed_at = 10;
+}
+
+message FareResponse {
+  int32 trip_id = 1;
+  double distance_km = 2;
+  double base_fare = 3;
+  double price_per_km = 4;
+  double total_fare = 5;
+  string currency = 6;
 }

@@ -54,7 +54,15 @@ function updateBookingStatus(id, status) {
 }
 
 function acceptBooking(id) {
-  return promisify("AcceptBooking", { id: Number(id) });
+  return promisify("AcceptBooking", { id: Number(id) }).then((response) => ({
+    booking: response,
+    trip: response.trip_id
+      ? {
+          tripId: response.trip_id,
+          status: response.trip_status,
+        }
+      : null,
+  }));
 }
 
 function cancelBooking(id, cancelReason) {

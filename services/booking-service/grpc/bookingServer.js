@@ -39,6 +39,8 @@ function toBookingResponse(booking) {
     vehicle_type: booking.vehicleType,
     status: booking.status,
     cancel_reason: booking.cancelReason || "",
+    trip_id: booking.tripId || 0,
+    trip_status: booking.tripStatus || "",
   };
 }
 
@@ -126,8 +128,11 @@ async function UpdateBookingStatus(call, callback) {
 
 async function AcceptBooking(call, callback) {
   try {
-    const booking = await acceptBooking(call.request.id);
-    callback(null, toBookingResponse(booking));
+    const result = await acceptBooking(call.request.id);
+    const response = toBookingResponse(result.booking);
+    response.trip_id = result.trip?.tripId || 0;
+    response.trip_status = result.trip?.status || "";
+    callback(null, response);
   } catch (error) {
     console.error("AcceptBooking gRPC error:", error);
     callback(mapError(error));

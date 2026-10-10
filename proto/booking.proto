@@ -48,6 +48,8 @@ message BookingResponse {
   string vehicle_type = 8;
   string status = 9;
   string cancel_reason = 10;
+  int32 trip_id = 11;
+  string trip_status = 12;
 }
 
 message BookingListResponse {
