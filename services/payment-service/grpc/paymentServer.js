@@ -10,7 +10,7 @@ const {
 
 const PROTO_PATH = path.join(
   __dirname,
-  "../../../contracts/grpc/payment.proto",
+  "../../../proto/payment.proto",
 );
 
 const definition = protoLoader.loadSync(PROTO_PATH, {

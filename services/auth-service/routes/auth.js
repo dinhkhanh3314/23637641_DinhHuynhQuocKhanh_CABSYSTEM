@@ -21,6 +21,12 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    if (password.length < 8) {
+      return res.status(400).json({
+        message: "Password must be at least 8 characters",
+      });
+    }
+
     const user = await registerCustomer({
       phone,
       email,
@@ -100,10 +106,15 @@ router.post("/driver/send-otp", async (req, res) => {
 
     const otp = await sendDriverOtp(phone);
 
-    res.status(200).json({
+    const response = {
       message: "Đã gửi OTP",
-      otp,
-    });
+    };
+
+    if (process.env.NODE_ENV !== "production") {
+      response.otp = otp;
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Send driver OTP error:", error);
 
@@ -191,9 +202,9 @@ router.post("/driver/set-password", async (req, res) => {
       });
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return res.status(400).json({
-        message: "Mật khẩu phải có ít nhất 6 ký tự",
+        message: "Mật khẩu phải có ít nhất 8 ký tự",
       });
     }
 

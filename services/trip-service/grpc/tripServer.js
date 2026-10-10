@@ -9,7 +9,7 @@ const {
   completeTrip,
 } = require("../services/tripService");
 
-const PROTO_PATH = path.join(__dirname, "../../../contracts/grpc/trip.proto");
+const PROTO_PATH = path.join(__dirname, "../../../proto/trip.proto");
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   keepCase: false,

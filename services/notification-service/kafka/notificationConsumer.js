@@ -1,11 +1,14 @@
-const { Kafka } = require("kafkajs");
+const { Kafka, logLevel } = require("kafkajs");
 const { createNotification } = require("../services/notificationService");
 
 const kafka = new Kafka({
   clientId: process.env.KAFKA_CLIENT_ID || "notification-service",
   brokers: (process.env.KAFKA_BROKERS || "localhost:9092").split(","),
+  logLevel: logLevel.ERROR,
 });
 
+const topics = ["booking.events", "payment.events"];
+const admin = kafka.admin();
 const consumer = kafka.consumer({
   groupId: process.env.KAFKA_GROUP_ID || "notification-service",
 });
@@ -33,9 +36,30 @@ function notificationFromEvent(event) {
 }
 
 async function startNotificationConsumer() {
+  await admin.connect();
+  try {
+    const existingTopics = await admin.listTopics();
+    const missingTopics = topics.filter(
+      (topic) => !existingTopics.includes(topic),
+    );
+
+    if (missingTopics.length > 0) {
+      await admin.createTopics({
+        waitForLeaders: true,
+        topics: missingTopics.map((topic) => ({
+          topic,
+          numPartitions: 1,
+          replicationFactor: 1,
+        })),
+      });
+    }
+  } finally {
+    await admin.disconnect();
+  }
+
   await consumer.connect();
   await consumer.subscribe({
-    topics: ["booking.events", "payment.events"],
+    topics,
     fromBeginning: false,
   });
 

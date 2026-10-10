@@ -1,11 +1,13 @@
-const { Kafka } = require("kafkajs");
+const { Kafka, Partitioners } = require("kafkajs");
 
 const kafka = new Kafka({
   clientId: process.env.KAFKA_CLIENT_ID || "payment-service",
   brokers: (process.env.KAFKA_BROKERS || "localhost:9092").split(","),
 });
 
-const producer = kafka.producer();
+const producer = kafka.producer({
+  createPartitioner: Partitioners.LegacyPartitioner,
+});
 let connected = false;
 let eventSequence = 0;
 

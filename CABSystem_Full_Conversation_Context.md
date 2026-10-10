@@ -27,7 +27,7 @@ Infrastructure: PostgreSQL `5432`, MongoDB `27017`, Redis `6379`, Kafka `9092`, 
 
 ## gRPC contracts hiện có
 
-Thư mục: `contracts/grpc`
+Thư mục: `proto`
 
 - `auth.proto`: register/login/OTP/driver password.
 - `customer.proto`: `CreateCustomer`.
@@ -119,5 +119,9 @@ docker compose up -d
 6. Phần 13 Integration đã bắt đầu: bổ sung smoke test health cho Gateway và tám
    service, tài liệu thứ tự khởi động/cấu hình cổng, và chuẩn hóa cấu hình Kafka
    mẫu `localhost:9092`. Chưa chạy full business flow runtime.
+7. Phần 14 Security đã triển khai lớp JWT tại API Gateway, bảo vệ các route
+   nghiệp vụ, phân quyền Driver application, đưa rate limit lên đúng vị trí và
+   cập nhật hướng dẫn Postman dùng Bearer token. Chưa hoàn tất kiểm thử runtime
+   toàn bộ các trường hợp bảo mật.
 
 Khi gặp lỗi ở cuộc trò chuyện mới, cung cấp service đang chạy, log đầy đủ, URL/method/body Postman, status hoặc gRPC code và ID nghiệp vụ liên quan.

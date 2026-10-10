@@ -3,7 +3,7 @@ const protoLoader = require("@grpc/proto-loader");
 const path = require("path");
 
 const definition = protoLoader.loadSync(
-  path.join(__dirname, "../../../contracts/grpc/payment.proto"),
+  path.join(__dirname, "../../../proto/payment.proto"),
   { keepCase: true, longs: String, enums: String, defaults: true, oneofs: true },
 );
 const paymentProto = grpc.loadPackageDefinition(definition).payment;

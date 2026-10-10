@@ -33,16 +33,23 @@ Sau đó mở một terminal cho mỗi service và chạy `node server.js` từ 
 mục của service. Chạy Notification trước Booking/Payment để consumer Kafka sẵn
 sàng nhận event, và chạy API Gateway cuối cùng.
 
-## Smoke test
+## Kiểm tra health bằng Postman
 
-Sau khi các service đã chạy:
+Sau khi các service đã chạy, gửi lần lượt các request `GET` sau trong Postman:
 
-```powershell
-node scripts\integration-smoke.js
+```http
+GET http://localhost:3000/health
+GET http://localhost:3001/health
+GET http://localhost:3002/health
+GET http://localhost:3003/health
+GET http://localhost:3004/health
+GET http://localhost:3005/health
+GET http://localhost:3006/health
+GET http://localhost:3007/health
 ```
 
-Smoke test gọi `/health` của Gateway và tất cả microservice. Lệnh trả mã lỗi
-khác 0 nếu có service không phản hồi hoặc trả HTTP lỗi.
+Tất cả request cần trả HTTP `200`. Nếu service nào không phản hồi, kiểm tra
+terminal của service đó trước khi tiếp tục test nghiệp vụ.
 
 ## Kiểm tra nghiệp vụ tích hợp
 

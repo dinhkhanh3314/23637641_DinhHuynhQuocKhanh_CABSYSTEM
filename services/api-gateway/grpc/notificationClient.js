@@ -3,7 +3,7 @@ const protoLoader = require("@grpc/proto-loader");
 const path = require("path");
 
 const definition = protoLoader.loadSync(
-  path.join(__dirname, "../../../contracts/grpc/notification.proto"),
+  path.join(__dirname, "../../../proto/notification.proto"),
   { keepCase: true, longs: String, enums: String, defaults: true, oneofs: true },
 );
 const notificationProto = grpc.loadPackageDefinition(definition).notification;

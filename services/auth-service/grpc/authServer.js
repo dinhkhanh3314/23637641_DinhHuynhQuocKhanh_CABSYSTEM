@@ -11,7 +11,7 @@ const {
   setDriverPassword,
 } = require("../services/authService");
 
-const PROTO_PATH = path.join(__dirname, "../../../contracts/grpc/auth.proto");
+const PROTO_PATH = path.join(__dirname, "../../../proto/auth.proto");
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   keepCase: true,

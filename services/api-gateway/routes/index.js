@@ -7,6 +7,7 @@ const driverRoutes = require("./driver");
 const tripRoutes = require("./trip");
 const paymentRoutes = require("./payment");
 const notificationRoutes = require("./notification");
+const authMiddleware = require("../middlewares/auth");
 
 const router = express.Router();
 
@@ -17,11 +18,11 @@ router.get("/", (req, res) => {
 });
 
 router.use("/auth", authRoutes);
-router.use("/bookings", bookingRoutes);
-router.use("/customers", customerRoutes);
-router.use("/drivers", driverRoutes);
-router.use("/trips", tripRoutes);
-router.use("/payments", paymentRoutes);
-router.use("/notifications", notificationRoutes);
+router.use("/bookings", authMiddleware, bookingRoutes);
+router.use("/customers", authMiddleware, customerRoutes);
+router.use("/drivers", authMiddleware, driverRoutes);
+router.use("/trips", authMiddleware, tripRoutes);
+router.use("/payments", authMiddleware, paymentRoutes);
+router.use("/notifications", authMiddleware, notificationRoutes);
 
 module.exports = router;

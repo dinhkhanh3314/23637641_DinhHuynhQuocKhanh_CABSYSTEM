@@ -1,6 +1,7 @@
 const express = require("express");
 const driverClient = require("../grpc/driverClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
+const { requireRoles } = require("../middlewares/auth");
 
 const router = express.Router();
 
@@ -40,9 +41,9 @@ router.post("/", async (req, res) => {
 
 router.get("/applications", run(() => driverClient.getApplications()));
 router.get("/applications/:id", run((req) => driverClient.getApplication(req.params.id)));
-router.put("/applications/:id/approve", run((req) => driverClient.approveApplication(req.params.id)));
-router.put("/applications/:id/reject", run((req) => driverClient.rejectApplication(req.params.id, req.body.note)));
-router.put("/applications/:id/resubmit", run((req) => driverClient.resubmitApplication(req.params.id, req.body)));
+router.put("/applications/:id/approve", requireRoles("OPERATOR", "ADMIN"), run((req) => driverClient.approveApplication(req.params.id)));
+router.put("/applications/:id/reject", requireRoles("OPERATOR", "ADMIN"), run((req) => driverClient.rejectApplication(req.params.id, req.body.note)));
+router.put("/applications/:id/resubmit", requireRoles("DRIVER"), run((req) => driverClient.resubmitApplication(req.params.id, req.body)));
 
 router.get("/online", run(() => driverClient.getOnlineDrivers()));
 router.get("/nearby", run((req) => driverClient.getNearbyDrivers({

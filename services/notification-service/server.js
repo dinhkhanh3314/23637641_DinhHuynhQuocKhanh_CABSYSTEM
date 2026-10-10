@@ -1,5 +1,14 @@
 require("dotenv").config();
 
+process.removeAllListeners("warning");
+process.on("warning", (warning) => {
+  if (warning.name === "TimeoutNegativeWarning") {
+    return;
+  }
+
+  console.warn(warning.stack || warning.message);
+});
+
 const express = require("express");
 const connectDatabase = require("./config/database");
 const notificationRoutes = require("./routes/notification");

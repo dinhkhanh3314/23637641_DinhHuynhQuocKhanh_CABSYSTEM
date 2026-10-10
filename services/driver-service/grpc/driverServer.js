@@ -5,7 +5,7 @@ const path = require("path");
 const driverService = require("../services/driverService");
 const applicationService = require("../services/applicationService");
 
-const PROTO_PATH = path.join(__dirname, "../../../contracts/grpc/driver.proto");
+const PROTO_PATH = path.join(__dirname, "../../../proto/driver.proto");
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
   keepCase: true,

@@ -4,7 +4,7 @@ const path = require("path");
 
 const PROTO_PATH = path.join(
   __dirname,
-  "../../../contracts/grpc/customer.proto",
+  "../../../proto/customer.proto",
 );
 
 const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
