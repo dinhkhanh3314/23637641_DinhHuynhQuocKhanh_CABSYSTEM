@@ -4,7 +4,22 @@ package driver;
 
 service DriverService {
   rpc CreateDriver (CreateDriverRequest) returns (DriverResponse);
+  rpc GetDriver (GetDriverRequest) returns (DriverDetailsResponse);
+  rpc GetDrivers (EmptyRequest) returns (DriverListResponse);
+  rpc UpdateDriver (UpdateDriverRequest) returns (DriverDetailsResponse);
   rpc GetNearbyDrivers (GetNearbyDriversRequest) returns (NearbyDriversResponse);
+  rpc GetOnlineDrivers (EmptyRequest) returns (OnlineDriversResponse);
+  rpc GoOnline (DriverIdRequest) returns (DriverStatusResponse);
+  rpc GoOffline (DriverIdRequest) returns (DriverStatusResponse);
+  rpc UpdateDriverLocation (UpdateDriverLocationRequest) returns (DriverLocationResponse);
+  rpc GetDriverLocation (GetDriverRequest) returns (DriverLocationResponse);
+  rpc CreateVehicle (CreateVehicleRequest) returns (VehicleResponse);
+  rpc UpdateVehicle (UpdateVehicleRequest) returns (VehicleResponse);
+  rpc GetApplications (EmptyRequest) returns (ApplicationListResponse);
+  rpc GetApplication (ApplicationIdRequest) returns (ApplicationResponse);
+  rpc ApproveApplication (ApplicationIdRequest) returns (ApplicationResponse);
+  rpc RejectApplication (RejectApplicationRequest) returns (ApplicationResponse);
+  rpc ResubmitApplication (ResubmitApplicationRequest) returns (ApplicationResponse);
 }
 
 message CreateDriverRequest {
@@ -26,6 +41,104 @@ message DriverResponse {
   string full_name = 3;
   string phone = 4;
   string status = 5;
+}
+
+message EmptyRequest {}
+message GetDriverRequest { int32 id = 1; }
+message DriverIdRequest { int32 driver_id = 1; }
+message ApplicationIdRequest { int32 id = 1; }
+
+message UpdateDriverRequest {
+  int32 id = 1;
+  string full_name = 2;
+  string phone = 3;
+  string license_no = 4;
+}
+
+message CreateVehicleRequest {
+  int32 driver_id = 1;
+  string vehicle_type = 2;
+  string plate_number = 3;
+  string brand = 4;
+  string model = 5;
+  string color = 6;
+}
+
+message UpdateVehicleRequest {
+  int32 driver_id = 1;
+  string vehicle_type = 2;
+  string plate_number = 3;
+  string brand = 4;
+  string model = 5;
+  string color = 6;
+}
+
+message DriverDetailsResponse {
+  int32 id = 1;
+  int32 user_id = 2;
+  string full_name = 3;
+  string phone = 4;
+  string license_no = 5;
+  string status = 6;
+  string application_status = 7;
+  VehicleResponse vehicle = 8;
+}
+
+message DriverListResponse { repeated DriverDetailsResponse drivers = 1; }
+message OnlineDriversResponse { repeated int32 driver_ids = 1; }
+
+message DriverStatusResponse {
+  int32 driver_id = 1;
+  string status = 2;
+}
+
+message UpdateDriverLocationRequest {
+  int32 driver_id = 1;
+  double longitude = 2;
+  double latitude = 3;
+}
+
+message DriverLocationResponse {
+  int32 driver_id = 1;
+  double longitude = 2;
+  double latitude = 3;
+}
+
+message VehicleResponse {
+  int32 driver_id = 1;
+  string vehicle_type = 2;
+  string plate_number = 3;
+  string brand = 4;
+  string model = 5;
+  string color = 6;
+}
+
+message RejectApplicationRequest {
+  int32 id = 1;
+  string note = 2;
+}
+
+message ResubmitApplicationRequest {
+  int32 id = 1;
+  string full_name = 2;
+  string phone = 3;
+  string license_no = 4;
+  string vehicle_type = 5;
+  string plate_number = 6;
+  string brand = 7;
+  string model = 8;
+  string color = 9;
+}
+
+message ApplicationResponse {
+  int32 id = 1;
+  int32 driver_id = 2;
+  string status = 3;
+  string note = 4;
+}
+
+message ApplicationListResponse {
+  repeated ApplicationResponse applications = 1;
 }
 
 message GetNearbyDriversRequest {

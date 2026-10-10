@@ -62,6 +62,34 @@ async function updateDriver(id, data) {
   });
 }
 
+async function createVehicle(driverId, data) {
+  return prisma.vehicle.create({
+    data: {
+      driverId: Number(driverId),
+      vehicleType: data.vehicleType,
+      plateNumber: data.plateNumber,
+      brand: data.brand,
+      model: data.model,
+      color: data.color,
+    },
+  });
+}
+
+async function updateVehicle(driverId, data) {
+  return prisma.vehicle.update({
+    where: {
+      driverId: Number(driverId),
+    },
+    data: {
+      vehicleType: data.vehicleType,
+      plateNumber: data.plateNumber,
+      brand: data.brand,
+      model: data.model,
+      color: data.color,
+    },
+  });
+}
+
 async function goOnline(driverId) {
   const driver = await prisma.driver.findUnique({
     where: { id: driverId },
@@ -236,6 +264,8 @@ module.exports = {
   getDriver,
   getDrivers,
   updateDriver,
+  createVehicle,
+  updateVehicle,
   goOnline,
   goOffline,
   getOnlineDrivers,

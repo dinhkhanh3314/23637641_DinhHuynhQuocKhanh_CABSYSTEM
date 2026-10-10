@@ -4,10 +4,26 @@ package customer;
 
 service CustomerService {
   rpc CreateCustomer (CreateCustomerRequest) returns (CustomerResponse);
+  rpc GetCustomer (GetCustomerRequest) returns (CustomerResponse);
+  rpc UpdateCustomer (UpdateCustomerRequest) returns (CustomerResponse);
 }
 
 message CreateCustomerRequest {
   int32 user_id = 1;
+  string full_name = 2;
+  string date_of_birth = 3;
+  string gender = 4;
+}
+
+message GetCustomerRequest {
+  int32 user_id = 1;
+}
+
+message UpdateCustomerRequest {
+  int32 user_id = 1;
+  string full_name = 2;
+  string date_of_birth = 3;
+  string gender = 4;
 }
 
 message CustomerResponse {

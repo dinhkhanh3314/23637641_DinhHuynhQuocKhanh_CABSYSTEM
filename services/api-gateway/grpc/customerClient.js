@@ -13,12 +13,29 @@ const client = new customerProto.CustomerService(
 );
 
 function createCustomer(data) {
+  return call("CreateCustomer", data);
+}
+
+function call(method, data) {
   return new Promise((resolve, reject) => {
-    client.CreateCustomer(data, (error, response) => {
+    client[method](data, (error, response) => {
       if (error) return reject(error);
       resolve(response);
     });
   });
 }
 
-module.exports = { createCustomer };
+function getCustomer(userId) {
+  return call("GetCustomer", { user_id: Number(userId) });
+}
+
+function updateCustomer(userId, data) {
+  return call("UpdateCustomer", {
+    user_id: Number(userId),
+    full_name: data.fullName,
+    date_of_birth: data.dateOfBirth || "",
+    gender: data.gender || "",
+  });
+}
+
+module.exports = { createCustomer, getCustomer, updateCustomer };
