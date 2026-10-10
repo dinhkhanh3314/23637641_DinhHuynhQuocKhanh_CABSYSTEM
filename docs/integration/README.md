@@ -113,8 +113,6 @@ Nếu một dependency dừng, endpoint có thể trả HTTP `503` và `DEGRADED
 7. Booking/Payment phát Kafka event; Notification Consumer ghi notification
    cho Customer hoặc Driver liên quan.
 
-Chi tiết request và kết quả mong đợi nằm trong [TEST_01_30.md](../../TEST_01_30.md).
-
 ## 6. Dữ liệu và dừng hệ thống
 
 Compose dùng named volume:

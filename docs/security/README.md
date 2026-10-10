@@ -65,8 +65,6 @@ Authorization: Bearer <access_token>
    charge.
 10. Gửi webhook sai secret → bị từ chối.
 
-Thực hiện theo checklist chi tiết trong [TEST_01_30.md](../../TEST_01_30.md).
-
 ## Encryption và giới hạn
 
 Password phải được hash, không lưu plaintext. Tuy nhiên hash password không
