@@ -625,6 +625,62 @@ Body:
 
 Sau do co the chuyen sang trang thai hoan thanh theo business rule hien tai.
 
+### 11.1 Tao rating dang cho sau khi Trip hoan tat
+
+Khi Trip chuyen sang `COMPLETED`, Trip Service tu dong tao mot review cho
+Customer voi trang thai `PENDING`. Kiem tra review nay qua API Gateway:
+
+```http
+GET {{base_url}}/api/trips/{{trip_id}}/rating?reviewerId={{customer_id}}
+```
+
+Dung Bearer token cua Customer. Ket qua mong doi la HTTP `200` va:
+
+```json
+{
+  "review": {
+    "tripId": 1,
+    "reviewerId": 1,
+    "revieweeId": 1,
+    "reviewerType": "CUSTOMER",
+    "rating": 0,
+    "status": "PENDING"
+  }
+}
+```
+
+### 11.2 Customer gui rating
+
+```http
+POST {{base_url}}/api/trips/{{trip_id}}/rating
+Content-Type: application/json
+```
+
+Dung Bearer token cua Customer va body:
+
+```json
+{
+  "reviewerId": {{customer_id}},
+  "rating": 5,
+  "comment": "Tai xe phuc vu tot"
+}
+```
+
+Ket qua mong doi la HTTP `201`. Review phai co `status` la `SUBMITTED` va
+`rating` la `5`.
+
+### 11.3 Xem rating sau khi gui
+
+Gui lai request:
+
+```http
+GET {{base_url}}/api/trips/{{trip_id}}/rating?reviewerId={{customer_id}}
+```
+
+Ket qua mong doi la HTTP `200`, voi `status` la `SUBMITTED`. Gui lai request
+POST voi cung Trip va Customer phai bi tu choi vi moi Customer chi duoc danh
+gia mot lan cho mot Trip.
+
 ## 12. Test Payment
 
 ### 12.1 Tao payment

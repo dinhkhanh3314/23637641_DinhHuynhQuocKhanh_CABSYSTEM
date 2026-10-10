@@ -70,7 +70,10 @@ async function completeTrip(tripId) {
   trip.status = "COMPLETED";
   trip.completedAt = new Date();
 
-  return trip.save();
+  await trip.save();
+  await createPendingReview(trip);
+
+  return trip;
 }
 
 async function getTrip(tripId) {
@@ -103,25 +106,61 @@ async function createReview(data) {
     reviewerId: Number(data.reviewerId),
   });
 
-  if (existingReview) {
+  if (!existingReview) {
+    throw new Error("REVIEW_NOT_FOUND");
+  }
+
+  if (existingReview.status === "SUBMITTED") {
     throw new Error("REVIEW_ALREADY_EXISTS");
+  }
+
+  const rating = Number(data.rating);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error("INVALID_RATING");
+  }
+
+  existingReview.rating = rating;
+  existingReview.comment = data.comment || null;
+  existingReview.status = "SUBMITTED";
+
+  return existingReview.save();
+}
+
+async function createPendingReview(trip) {
+  const existingReview = await Review.findOne({
+    tripId: trip.tripId,
+    reviewerId: trip.customerId,
+  });
+
+  if (existingReview) {
+    return existingReview;
   }
 
   const lastReview = await Review.findOne()
     .sort({ reviewId: -1 })
     .select("reviewId");
 
-  const reviewId = lastReview ? lastReview.reviewId + 1 : 1;
-
   return Review.create({
-    reviewId,
-    tripId: Number(data.tripId),
-    reviewerId: Number(data.reviewerId),
-    revieweeId: Number(data.revieweeId),
-    reviewerType: data.reviewerType,
-    rating: Number(data.rating),
-    comment: data.comment || null,
+    reviewId: lastReview ? lastReview.reviewId + 1 : 1,
+    tripId: trip.tripId,
+    reviewerId: trip.customerId,
+    revieweeId: trip.driverId,
+    reviewerType: "CUSTOMER",
+    status: "PENDING",
   });
+}
+
+async function getReview(tripId, reviewerId) {
+  const review = await Review.findOne({
+    tripId: Number(tripId),
+    reviewerId: Number(reviewerId),
+  });
+
+  if (!review) {
+    throw new Error("REVIEW_NOT_FOUND");
+  }
+
+  return review;
 }
 
 async function getTripHistory(userId, userType) {
@@ -140,5 +179,6 @@ module.exports = {
   completeTrip,
   getTrip,
   createReview,
+  getReview,
   getTripHistory,
 };

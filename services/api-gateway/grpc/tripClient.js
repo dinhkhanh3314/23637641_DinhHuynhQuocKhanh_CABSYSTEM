@@ -37,4 +37,27 @@ function completeTrip(tripId) {
   return call("completeTrip", { tripId: Number(tripId) });
 }
 
-module.exports = { createTrip, getTrip, startTrip, completeTrip };
+function submitReview(data) {
+  return call("submitReview", {
+    tripId: Number(data.tripId),
+    reviewerId: Number(data.reviewerId),
+    rating: Number(data.rating),
+    comment: data.comment || "",
+  });
+}
+
+function getReview(tripId, reviewerId) {
+  return call("getReview", {
+    tripId: Number(tripId),
+    reviewerId: Number(reviewerId),
+  });
+}
+
+module.exports = {
+  createTrip,
+  getTrip,
+  startTrip,
+  completeTrip,
+  submitReview,
+  getReview,
+};

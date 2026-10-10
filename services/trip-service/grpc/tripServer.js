@@ -7,6 +7,8 @@ const {
   getTrip,
   startTrip,
   completeTrip,
+  createReview,
+  getReview,
 } = require("../services/tripService");
 
 const PROTO_PATH = path.join(__dirname, "../../../proto/trip.proto");
@@ -45,16 +47,34 @@ function handleError(callback, error) {
   const status =
     message === "TRIP_NOT_FOUND"
       ? grpc.status.NOT_FOUND
+      : message === "REVIEW_NOT_FOUND"
+        ? grpc.status.NOT_FOUND
       : message === "TRIP_ALREADY_EXISTS" ||
           message === "TRIP_CANNOT_START" ||
-          message === "TRIP_CANNOT_COMPLETE"
+          message === "TRIP_CANNOT_COMPLETE" ||
+          message === "REVIEW_ALREADY_EXISTS"
         ? grpc.status.FAILED_PRECONDITION
+        : message === "INVALID_RATING"
+          ? grpc.status.INVALID_ARGUMENT
         : grpc.status.INTERNAL;
 
   callback({
     code: status,
     message,
   });
+}
+
+function toReviewResponse(review) {
+  return {
+    reviewId: review.reviewId,
+    tripId: review.tripId,
+    reviewerId: review.reviewerId,
+    revieweeId: review.revieweeId,
+    reviewerType: review.reviewerType,
+    rating: review.rating || 0,
+    comment: review.comment || "",
+    status: review.status,
+  };
 }
 
 async function createTripHandler(call, callback) {
@@ -91,6 +111,27 @@ async function completeTripHandler(call, callback) {
   } catch (error) {
     handleError(callback, error);
   }
+
+  async function submitReviewHandler(call, callback) {
+    try {
+      const review = await createReview(call.request);
+      callback(null, toReviewResponse(review));
+    } catch (error) {
+      handleError(callback, error);
+    }
+  }
+
+  async function getReviewHandler(call, callback) {
+    try {
+      const review = await getReview(
+        call.request.tripId,
+        call.request.reviewerId,
+      );
+      callback(null, toReviewResponse(review));
+    } catch (error) {
+      handleError(callback, error);
+    }
+  }
 }
 
 function startTripGrpcServer() {
@@ -101,6 +142,8 @@ function startTripGrpcServer() {
     getTrip: getTripHandler,
     startTrip: startTripHandler,
     completeTrip: completeTripHandler,
+    submitReview: submitReviewHandler,
+    getReview: getReviewHandler,
   });
 
   const port = process.env.TRIP_GRPC_PORT || "50055";

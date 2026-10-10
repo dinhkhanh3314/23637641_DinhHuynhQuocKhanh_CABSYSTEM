@@ -31,7 +31,7 @@ const reviewSchema = new mongoose.Schema(
 
     rating: {
       type: Number,
-      required: true,
+      required: false,
       min: 1,
       max: 5,
     },
@@ -40,6 +40,12 @@ const reviewSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+
+    status: {
+      type: String,
+      enum: ["PENDING", "SUBMITTED"],
+      default: "PENDING",
+      required: true,
   },
   {
     timestamps: true,

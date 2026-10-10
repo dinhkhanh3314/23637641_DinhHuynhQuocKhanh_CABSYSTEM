@@ -4,6 +4,8 @@ const {
   getTrip,
   startTrip,
   completeTrip,
+  submitReview,
+  getReview,
 } = require("../grpc/tripClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
 
@@ -40,6 +42,33 @@ router.put("/:id/status", async (req, res) => {
       return res.status(400).json({ message: "Trạng thái không hợp lệ" });
     }
     res.json({ trip: await action(req.params.id) });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+router.post("/:id/rating", async (req, res) => {
+  try {
+    if (!Number.isInteger(Number(req.body.reviewerId))) {
+      return res.status(400).json({ message: "reviewerId is required" });
+    }
+
+    const review = await submitReview({
+      tripId: req.params.id,
+      reviewerId: req.body.reviewerId,
+      rating: req.body.rating,
+      comment: req.body.comment,
+    });
+    res.status(201).json({ review });
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+router.get("/:id/rating", async (req, res) => {
+  try {
+    const review = await getReview(req.params.id, req.query.reviewerId);
+    res.json({ review });
   } catch (error) {
     handleError(res, error);
   }

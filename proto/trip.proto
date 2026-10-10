@@ -7,6 +7,8 @@ service TripService {
   rpc GetTrip (GetTripRequest) returns (TripResponse);
   rpc StartTrip (UpdateTripStatusRequest) returns (TripResponse);
   rpc CompleteTrip (UpdateTripStatusRequest) returns (TripResponse);
+  rpc SubmitReview (SubmitReviewRequest) returns (ReviewResponse);
+  rpc GetReview (GetReviewRequest) returns (ReviewResponse);
 }
 
 message CreateTripRequest {
@@ -27,6 +29,18 @@ message UpdateTripStatusRequest {
   int32 tripId = 1;
 }
 
+message SubmitReviewRequest {
+  int32 tripId = 1;
+  int32 reviewerId = 2;
+  int32 rating = 3;
+  string comment = 4;
+}
+
+message GetReviewRequest {
+  int32 tripId = 1;
+  int32 reviewerId = 2;
+}
+
 message TripResponse {
   bool success = 1;
   string message = 2;
@@ -41,4 +55,15 @@ message TripResponse {
   string status = 11;
   string startedAt = 12;
   string completedAt = 13;
+}
+
+message ReviewResponse {
+  int32 reviewId = 1;
+  int32 tripId = 2;
+  int32 reviewerId = 3;
+  int32 revieweeId = 4;
+  string reviewerType = 5;
+  int32 rating = 6;
+  string comment = 7;
+  string status = 8;
 }

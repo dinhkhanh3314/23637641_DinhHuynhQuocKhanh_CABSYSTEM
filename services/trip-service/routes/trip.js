@@ -139,6 +139,12 @@ router.post("/:id/reviews", async (req, res) => {
       });
     }
 
+    if (error.message === "INVALID_RATING") {
+      return res.status(400).json({
+        message: "Rating phải là số nguyên từ 1 đến 5",
+      });
+    }
+
     res.status(500).json({
       message: "Không thể tạo đánh giá",
     });
