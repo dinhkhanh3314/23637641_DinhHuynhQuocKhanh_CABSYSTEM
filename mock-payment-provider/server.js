@@ -21,6 +21,13 @@ app.post("/payments", (req, res) => {
     });
   }
 
+  if (!["CASH", "BANK_TRANSFER", "MOCK_CARD"].includes(paymentMethod)) {
+    return res.status(400).json({
+      status: "FAILED",
+      message: "Phương thức thanh toán không được hỗ trợ",
+    });
+  }
+
   res.json({
     status: "SUCCESS",
     transactionId: `TXN-${paymentId}-${Date.now()}`,

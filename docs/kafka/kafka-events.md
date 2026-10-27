@@ -26,6 +26,11 @@ Notification Service chạy consumer group `notification-service`, nhận các t
 trên và lưu notification vào MongoDB. Event có thể tạo notification cho cả
 Customer và Driver nếu payload có đủ recipient ID.
 
+Thông báo gửi đến người dùng có tiêu đề và nội dung tiếng Việt theo sự kiện
+booking/payment và loại người nhận; tên event kỹ thuật không được hiển thị làm
+nội dung thông báo. Event không có mẫu thông báo hoặc không có recipient ID sẽ
+được bỏ qua và ghi cảnh báo log.
+
 ## Cấu hình
 
 ### Khi chạy trong Compose

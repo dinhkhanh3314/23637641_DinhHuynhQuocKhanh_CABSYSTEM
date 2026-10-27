@@ -65,9 +65,10 @@ async function getNotification(notificationId) {
   return notification;
 }
 
-async function getNotificationsByRecipient(recipientId) {
+async function getNotificationsByRecipient(recipientId, recipientType) {
   return Notification.find({
     recipientId: Number(recipientId),
+    ...(recipientType ? { recipientType } : {}),
   }).sort({
     createdAt: -1,
   });

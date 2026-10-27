@@ -15,6 +15,12 @@ async function getCustomerByUserId(userId) {
   });
 }
 
+async function getCustomers() {
+  return prisma.customer.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 async function createCustomer({ userId, fullName, dateOfBirth, gender }) {
   return prisma.customer.create({
     data: {
@@ -27,18 +33,26 @@ async function createCustomer({ userId, fullName, dateOfBirth, gender }) {
 }
 
 async function updateCustomer(userId, data) {
+  const updateData = {};
+  if (data.fullName !== undefined && data.fullName !== "") {
+    updateData.fullName = data.fullName;
+  }
+  if (data.dateOfBirth !== undefined && data.dateOfBirth !== "") {
+    updateData.dateOfBirth = new Date(data.dateOfBirth);
+  }
+  if (data.gender !== undefined && data.gender !== "") {
+    updateData.gender = data.gender;
+  }
+
   return prisma.customer.update({
     where: { userId },
-    data: {
-      fullName: data.fullName,
-      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
-      gender: data.gender,
-    },
+    data: updateData,
   });
 }
 
 module.exports = {
   getCustomerByUserId,
+  getCustomers,
   createCustomer,
   updateCustomer,
 };

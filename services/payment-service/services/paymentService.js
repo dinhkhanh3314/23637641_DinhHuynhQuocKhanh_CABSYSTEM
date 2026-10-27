@@ -28,19 +28,20 @@ function calculateDistanceKm(fromLatitude, fromLongitude, toLatitude, toLongitud
 
 async function calculateFare(tripId) {
   const trip = await getTrip(tripId);
-  const distanceKm = calculateDistanceKm(
+  const distanceKm = Number(calculateDistanceKm(
     trip.pickupLatitude,
     trip.pickupLongitude,
     trip.destinationLatitude,
     trip.destinationLongitude,
-  );
+  ).toFixed(2));
+  const pricePerKm = 4000;
 
   return {
     tripId: Number(tripId),
-    distanceKm: Number(distanceKm.toFixed(2)),
-    baseFare: 10000,
-    pricePerKm: 15000,
-    totalFare: Math.round((10000 + distanceKm * 15000) / 100) * 100,
+    distanceKm,
+    baseFare: 0,
+    pricePerKm,
+    totalFare: Math.round(distanceKm * pricePerKm),
     currency: "VND",
   };
 }
@@ -59,7 +60,7 @@ async function createPayment(data) {
     throw new Error("INVALID_CUSTOMER_ID");
   }
 
-  if (!paymentMethod) {
+  if (!["CASH", "BANK_TRANSFER"].includes(paymentMethod)) {
     throw new Error("INVALID_PAYMENT_METHOD");
   }
 
@@ -80,11 +81,6 @@ async function createPayment(data) {
 
   if (existingPayment) {
     throw new Error("PAYMENT_ALREADY_EXISTS");
-  }
-
-  const trip = await getTrip(tripId);
-  if (Number(trip.customerId) !== customerId) {
-    throw new Error("CUSTOMER_TRIP_MISMATCH");
   }
 
   const fare = await calculateFare(tripId);

@@ -6,6 +6,7 @@ const {
   createCustomer,
   getCustomerByUserId,
   updateCustomer,
+  getCustomers,
 } = require("../services/customerService");
 
 const PROTO_PATH = path.join(
@@ -71,6 +72,18 @@ async function getCustomerHandler(call, callback) {
   }
 }
 
+async function getCustomersHandler(call, callback) {
+  try {
+    const customers = await getCustomers();
+    callback(null, {
+      customers: customers.map(toCustomerResponse),
+    });
+  } catch (error) {
+    console.error("Get customers gRPC error:", error);
+    callback({ code: grpc.status.INTERNAL, message: error.message });
+  }
+}
+
 async function updateCustomerHandler(call, callback) {
   try {
     const customer = await updateCustomer(call.request.user_id, {
@@ -94,6 +107,7 @@ function startGrpcServer() {
   server.addService(customerProto.CustomerService.service, {
     CreateCustomer: createCustomerHandler,
     GetCustomer: getCustomerHandler,
+    GetCustomers: getCustomersHandler,
     UpdateCustomer: updateCustomerHandler,
   });
 

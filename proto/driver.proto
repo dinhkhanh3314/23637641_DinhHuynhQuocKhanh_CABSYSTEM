@@ -82,6 +82,10 @@ message DriverDetailsResponse {
   string status = 6;
   string application_status = 7;
   VehicleResponse vehicle = 8;
+  bool is_online = 9;
+  double latitude = 10;
+  double longitude = 11;
+  bool has_location = 12;
 }
 
 message DriverListResponse { repeated DriverDetailsResponse drivers = 1; }
@@ -157,6 +161,7 @@ message NearbyDriver {
   string status = 5;
   double latitude = 6;
   double longitude = 7;
+  bool is_online = 8;
 }
 
 message NearbyDriversResponse {

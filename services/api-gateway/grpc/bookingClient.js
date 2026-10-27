@@ -46,17 +46,28 @@ function getBooking(id, customerId) {
 }
 
 function getBookings(customerId, page, limit) {
-  return promisify("GetBookings", {
-    customer_id: Number(customerId),
+  const request = {
     page: Number(page) || 1,
     limit: Number(limit) || 20,
-  });
+  };
+  if (customerId !== undefined && customerId !== null) {
+    request.customer_id = Number(customerId);
+  }
+  return promisify("GetBookings", request);
 }
 
 function updateBookingStatus(id, status) {
   return promisify("UpdateBookingStatus", {
     id: Number(id),
     status,
+  });
+}
+
+function syncTripStatus(bookingId, tripId, tripStatus) {
+  return promisify("SyncTripStatus", {
+    booking_id: Number(bookingId),
+    trip_id: Number(tripId),
+    trip_status: tripStatus,
   });
 }
 
@@ -88,6 +99,7 @@ module.exports = {
   getBooking,
   getBookings,
   updateBookingStatus,
+  syncTripStatus,
   acceptBooking,
   cancelBooking,
   rejectBooking,

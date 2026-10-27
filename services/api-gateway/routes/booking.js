@@ -40,13 +40,16 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/", requireRoles("CUSTOMER", "OPERATOR", "ADMIN"), async (req, res) => {
+router.get("/", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), async (req, res) => {
   try {
-    const customerId = ["OPERATOR", "ADMIN"].includes(req.user.role)
-      ? undefined
-      : req.user.userId;
-    const result = await getBookings(customerId, req.query.page, req.query.limit);
-    res.json({ bookings: result.bookings || [] });
+    const result = await getBookings(undefined, req.query.page, req.query.limit);
+    res.json({
+      bookings: result.bookings || [],
+      pagination: {
+        page: Number(req.query.page) || 1,
+        limit: Number(req.query.limit) || 20,
+      },
+    });
   } catch (error) {
     handleError(res, error);
   }
@@ -54,8 +57,7 @@ router.get("/", requireRoles("CUSTOMER", "OPERATOR", "ADMIN"), async (req, res) 
 
 router.get("/:id", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), async (req, res) => {
   try {
-    const customerId = req.user.role === "CUSTOMER" ? req.user.userId : undefined;
-    const booking = await getBooking(req.params.id, customerId);
+    const booking = await getBooking(req.params.id);
     res.json({ booking });
   } catch (error) {
     handleError(res, error);
@@ -92,10 +94,6 @@ router.put("/:id/accept", requireRoles("DRIVER"), async (req, res) => {
 
 router.put("/:id/cancel", requireRoles("CUSTOMER"), async (req, res) => {
   try {
-    const ownedBooking = await getBooking(req.params.id, req.user.userId);
-    if (!ownedBooking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
     const booking = await cancelBooking(req.params.id, req.body.cancelReason);
     res.json({
       message: "Hủy chuyến thành công",

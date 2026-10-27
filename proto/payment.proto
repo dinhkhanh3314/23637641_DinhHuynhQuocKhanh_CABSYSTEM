@@ -6,7 +6,11 @@ service PaymentService {
   rpc CreatePayment (CreatePaymentRequest) returns (PaymentResponse);
   rpc GetPayment (GetPaymentRequest) returns (PaymentResponse);
   rpc ProcessPayment (GetPaymentRequest) returns (PaymentResponse);
-  rpc EstimateFare (GetPaymentRequest) returns (FareResponse);
+  rpc EstimateFare (EstimateFareRequest) returns (FareResponse);
+}
+
+message EstimateFareRequest {
+  int32 trip_id = 1;
 }
 
 message CreatePaymentRequest {

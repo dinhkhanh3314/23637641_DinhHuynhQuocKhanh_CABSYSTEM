@@ -29,13 +29,17 @@ function getCustomer(userId) {
   return call("GetCustomer", { user_id: Number(userId) });
 }
 
+function getCustomers() {
+  return call("GetCustomers", {});
+}
+
 function updateCustomer(userId, data) {
   return call("UpdateCustomer", {
     user_id: Number(userId),
-    full_name: data.fullName,
-    date_of_birth: data.dateOfBirth || "",
-    gender: data.gender || "",
+    full_name: data.fullName ?? data.full_name ?? "",
+    date_of_birth: data.dateOfBirth ?? data.date_of_birth ?? "",
+    gender: data.gender ?? "",
   });
 }
 
-module.exports = { createCustomer, getCustomer, updateCustomer };
+module.exports = { createCustomer, getCustomer, getCustomers, updateCustomer };

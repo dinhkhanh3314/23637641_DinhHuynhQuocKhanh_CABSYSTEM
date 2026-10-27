@@ -29,9 +29,10 @@ function getNotification(id) {
   return call("GetNotification", { id: Number(id) });
 }
 
-function getNotificationsByRecipient(recipientId) {
+function getNotificationsByRecipient(recipientId, recipientType) {
   return call("GetNotificationsByRecipient", {
     recipient_id: Number(recipientId),
+    recipient_type: recipientType || "",
   });
 }
 

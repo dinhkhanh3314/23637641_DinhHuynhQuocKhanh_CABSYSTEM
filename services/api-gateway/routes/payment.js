@@ -16,13 +16,13 @@ function handleError(res, error) {
   return res.status(mapped.status).json({ message: mapped.message });
 }
 
-router.post("/", async (req, res) => {
+router.post("/", requireRoles("CUSTOMER"), async (req, res) => {
   try {
     res.status(201).json({ payment: await createPayment({
       trip_id: req.body.tripId,
       customer_id: req.user.userId,
       amount: 0,
-      payment_method: req.body.paymentMethod || "MOCK_CARD",
+      payment_method: req.body.paymentMethod,
       idempotency_key: req.get("Idempotency-Key"),
     }) });
   } catch (error) {
@@ -30,7 +30,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/estimate/:tripId", async (req, res) => {
+router.get("/estimate/:tripId", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), async (req, res) => {
   try {
     res.json({ fare: await estimateFare(req.params.tripId) });
   } catch (error) {
@@ -38,7 +38,7 @@ router.get("/estimate/:tripId", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), async (req, res) => {
   try {
     res.json({ payment: await getPayment(req.params.id) });
   } catch (error) {

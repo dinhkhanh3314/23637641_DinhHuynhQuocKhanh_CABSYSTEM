@@ -23,6 +23,7 @@ function errorCallback(callback, error) {
     LOCATION_NOT_FOUND: grpc.status.NOT_FOUND,
     DRIVER_NOT_ONLINE: grpc.status.FAILED_PRECONDITION,
     DRIVER_NOT_APPROVED: grpc.status.FAILED_PRECONDITION,
+    INVALID_COORDINATES: grpc.status.INVALID_ARGUMENT,
     APPLICATION_NOT_FOUND: grpc.status.NOT_FOUND,
     APPLICATION_ALREADY_PROCESSED: grpc.status.FAILED_PRECONDITION,
     APPLICATION_NOT_REJECTED: grpc.status.FAILED_PRECONDITION,
@@ -54,6 +55,10 @@ function toDriverDetails(driver) {
     status: driver.status || "",
     application_status: driver.application?.status || "",
     vehicle: toVehicleResponse(driver.vehicle, driver.id),
+    is_online: driver.isOnline,
+    latitude: driver.latitude ?? 0,
+    longitude: driver.longitude ?? 0,
+    has_location: driver.latitude !== null && driver.longitude !== null,
   };
 }
 
@@ -163,6 +168,7 @@ function startDriverGrpcServer() {
             status: driver.status,
             latitude: driver.latitude,
             longitude: driver.longitude,
+            is_online: driver.isOnline,
           })),
           page: result.page,
           limit: result.limit,
@@ -170,11 +176,7 @@ function startDriverGrpcServer() {
         });
       } catch (error) {
         console.error("Get nearby drivers gRPC error:", error);
-
-        callback({
-          code: grpc.status.INTERNAL,
-          message: "Không thể tìm tài xế gần",
-        });
+        errorCallback(callback, error);
       }
     },
     GetOnlineDrivers: (call, callback) =>
@@ -189,14 +191,14 @@ function startDriverGrpcServer() {
         call,
         callback,
         () => driverService.goOnline(call.request.driver_id),
-        (result) => result,
+        (result) => ({ driver_id: result.driverId, status: result.status }),
       ),
     GoOffline: (call, callback) =>
       handleDriver(
         call,
         callback,
         () => driverService.goOffline(call.request.driver_id),
-        (result) => result,
+        (result) => ({ driver_id: result.driverId, status: result.status }),
       ),
     UpdateDriverLocation: (call, callback) =>
       handleDriver(
@@ -208,14 +210,22 @@ function startDriverGrpcServer() {
             call.request.longitude,
             call.request.latitude,
           ),
-        (result) => result,
+        (result) => ({
+          driver_id: result.driverId,
+          longitude: result.longitude,
+          latitude: result.latitude,
+        }),
       ),
     GetDriverLocation: (call, callback) =>
       handleDriver(
         call,
         callback,
         () => driverService.getDriverLocation(call.request.id),
-        (result) => result,
+        (result) => ({
+          driver_id: result.driverId,
+          longitude: result.longitude,
+          latitude: result.latitude,
+        }),
       ),
     CreateVehicle: (call, callback) =>
       handleDriver(

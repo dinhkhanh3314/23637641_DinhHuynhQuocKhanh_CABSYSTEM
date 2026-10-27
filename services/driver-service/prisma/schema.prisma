@@ -13,6 +13,9 @@ model Driver {
   phone       String?  @db.VarChar(20)
   licenseNo   String?  @unique @map("license_no") @db.VarChar(50)
   status      String   @default("ACTIVE") @db.VarChar(20)
+  isOnline    Boolean  @default(false) @map("is_online")
+  latitude    Float?
+  longitude   Float?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -20,6 +23,7 @@ model Driver {
   application Application?
 
   @@map("driver")
+  @@index([isOnline, latitude, longitude])
 }
 
 model Vehicle {

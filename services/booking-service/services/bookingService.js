@@ -175,49 +175,73 @@ async function acceptBooking(id) {
     throw new Error("BOOKING_NOT_FOUND");
   }
 
-  if (booking.status !== "DRIVER_ASSIGNED") {
+  if (!["DRIVER_ASSIGNED", "DRIVER_ACCEPTED"].includes(booking.status)) {
     throw new Error("BOOKING_NOT_ASSIGNED");
   }
 
-  const bookingAccepted = await prisma.booking.update({
-    where: {
-      id: Number(id),
-    },
-    data: {
-      status: "DRIVER_ACCEPTED",
-    },
-  });
-
-  await publishEvent("booking.events", "DriverAccepted", {
-    bookingId: bookingAccepted.id,
-    customerId: bookingAccepted.customerId,
-    driverId: bookingAccepted.driverId,
-    status: bookingAccepted.status,
-  });
+  if (!booking.driverId) {
+    throw new Error("BOOKING_NOT_ASSIGNED");
+  }
 
   let trip;
   try {
     trip = await createTrip({
+      bookingId: booking.id,
+      customerId: booking.customerId,
+      driverId: booking.driverId,
+      pickupLatitude: Number(booking.pickupLatitude),
+      pickupLongitude: Number(booking.pickupLongitude),
+      destinationLatitude: Number(booking.destinationLatitude),
+      destinationLongitude: Number(booking.destinationLongitude),
+    });
+  } catch (error) {
+    console.error("CreateTrip gRPC error:", error);
+    throw new Error("TRIP_CREATION_FAILED");
+  }
+
+  const bookingAccepted = await prisma.booking.update({
+    where: { id: Number(id) },
+    data: {
+      status: "DRIVER_ACCEPTED",
+      tripId: trip.tripId,
+      tripStatus: trip.status,
+    },
+  });
+
+  if (booking.status !== "DRIVER_ACCEPTED") {
+    await publishEvent("booking.events", "DriverAccepted", {
       bookingId: bookingAccepted.id,
       customerId: bookingAccepted.customerId,
       driverId: bookingAccepted.driverId,
-      pickupLatitude: bookingAccepted.pickupLatitude,
-      pickupLongitude: bookingAccepted.pickupLongitude,
-      destinationLatitude: bookingAccepted.destinationLatitude,
-      destinationLongitude: bookingAccepted.destinationLongitude,
+      tripId: bookingAccepted.tripId,
+      tripStatus: bookingAccepted.tripStatus,
+      status: bookingAccepted.status,
     });
-  } catch (error) {
-    const alreadyExists =
-      error.details === "TRIP_ALREADY_EXISTS" ||
-      error.message === "TRIP_ALREADY_EXISTS";
-
-    if (!alreadyExists) {
-      console.error("CreateTrip gRPC error:", error);
-      throw new Error("TRIP_CREATION_FAILED");
-    }
   }
 
   return { booking: bookingAccepted, trip };
+}
+
+async function syncTripStatus(bookingId, tripId, tripStatus) {
+  const bookingStatuses = {
+    ACCEPTED: "DRIVER_ACCEPTED",
+    IN_PROGRESS: "IN_PROGRESS",
+    COMPLETED: "COMPLETED",
+    CANCELED: "CANCELLED",
+  };
+  const status = bookingStatuses[tripStatus];
+  if (!status) {
+    throw new Error("INVALID_TRIP_STATUS");
+  }
+
+  return prisma.booking.update({
+    where: { id: Number(bookingId) },
+    data: {
+      tripId: Number(tripId),
+      tripStatus,
+      status,
+    },
+  });
 }
 
 async function rejectBooking(id) {
@@ -400,6 +424,7 @@ module.exports = {
   updateBookingStatus,
   cancelBooking,
   acceptBooking,
+  syncTripStatus,
   rejectBooking,
   startDriverTimeout,
   findAndAssignNextDriver,

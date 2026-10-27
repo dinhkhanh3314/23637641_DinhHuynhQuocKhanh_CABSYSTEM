@@ -206,12 +206,9 @@ services:
         condition: service_completed_successfully
       postgres:
         condition: service_healthy
-      redis:
-        condition: service_healthy
     environment:
       PORT: 3003
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/driver_db
-      REDIS_URL: redis://redis:6379
     expose:
       - "3003"
       - "50053"

@@ -24,6 +24,7 @@ message GetNotificationRequest {
 
 message GetNotificationsByRecipientRequest {
   int32 recipient_id = 1;
+  string recipient_type = 2;
 }
 
 message NotificationResponse {

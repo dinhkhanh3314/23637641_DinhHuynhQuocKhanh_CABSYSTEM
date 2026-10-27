@@ -39,6 +39,18 @@ function createCustomer(userId) {
   });
 }
 
+function getCustomer(userId) {
+  return new Promise((resolve, reject) => {
+    client.GetCustomer({ user_id: userId }, (error, response) => {
+      if (error) {
+        return reject(error);
+      }
+      resolve(response);
+    });
+  });
+}
+
 module.exports = {
   createCustomer,
+  getCustomer,
 };

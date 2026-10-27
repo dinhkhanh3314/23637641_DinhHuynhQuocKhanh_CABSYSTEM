@@ -26,7 +26,7 @@ function run(handler) {
   };
 }
 
-router.post("/", async (req, res) => {
+router.post("/", requireRoles("OPERATOR", "ADMIN"), async (req, res) => {
   try {
     res.status(201).json(await driverClient.createDriver({
       user_id: req.body.userId,
@@ -44,20 +44,27 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/applications", run(() => driverClient.getApplications()));
-router.get("/applications/:id", run((req) => driverClient.getApplication(req.params.id)));
+router.get("/applications", requireRoles("OPERATOR", "ADMIN"), run(() => driverClient.getApplications()));
+router.get("/applications/:id", requireRoles("OPERATOR", "ADMIN"), run((req) => driverClient.getApplication(req.params.id)));
 router.put("/applications/:id/approve", requireRoles("OPERATOR", "ADMIN"), run((req) => driverClient.approveApplication(req.params.id)));
 router.put("/applications/:id/reject", requireRoles("OPERATOR", "ADMIN"), run((req) => driverClient.rejectApplication(req.params.id, req.body.note)));
 router.put("/applications/:id/resubmit", requireRoles("DRIVER"), run((req) => driverClient.resubmitApplication(req.params.id, req.body)));
 
-router.get("/online", requireRoles("OPERATOR", "ADMIN"), run(() => driverClient.getOnlineDrivers()));
-router.get("/nearby", run(async (req) => {
+router.get("/online", requireRoles("DRIVER", "OPERATOR", "ADMIN"), run(() => driverClient.getOnlineDrivers()));
+router.get("/nearby", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), run(async (req, res) => {
   const latitude = req.query.lat ?? req.query.latitude;
   const longitude = req.query.lng ?? req.query.longitude;
   const latitudeNumber = Number(latitude);
   const longitudeNumber = Number(longitude);
 
-  if (!Number.isFinite(latitudeNumber) || !Number.isFinite(longitudeNumber)) {
+  if (
+    !Number.isFinite(latitudeNumber) ||
+    latitudeNumber < -90 ||
+    latitudeNumber > 90 ||
+    !Number.isFinite(longitudeNumber) ||
+    longitudeNumber < -180 ||
+    longitudeNumber > 180
+  ) {
     return res.status(400).json({
       message: "lat and lng are required numeric coordinates",
     });
@@ -79,30 +86,15 @@ router.get("/nearby", run(async (req) => {
     },
   };
 }));
-router.get("/", run(() => driverClient.getDrivers()));
-router.get("/:id/location", run((req) => driverClient.getDriverLocation(req.params.id)));
-router.get("/:id", run((req) => driverClient.getDriver(req.params.id)));
+router.get("/", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), run(() => driverClient.getDrivers()));
+router.get("/:id/location", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), run((req) => driverClient.getDriverLocation(req.params.id)));
+router.get("/:id", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), run((req) => driverClient.getDriver(req.params.id)));
 
-async function ownDriver(req, res, next) {
-  if (req.user.role !== "DRIVER") {
-    return res.status(403).json({ message: "Driver role required" });
-  }
-  try {
-    const driver = await driverClient.getDriver(req.params.id);
-    if (String(driver.userId) !== String(req.user.userId)) {
-      return res.status(403).json({ message: "Driver resource belongs to another user" });
-    }
-  } catch (error) {
-    return handleError(res, error);
-  }
-  return next();
-}
-
-router.put("/:id/location", ownDriver, run((req) => driverClient.updateDriverLocation(req.params.id, req.body)));
-router.put("/:id/online", ownDriver, run((req) => driverClient.goOnline(req.params.id)));
-router.put("/:id/offline", ownDriver, run((req) => driverClient.goOffline(req.params.id)));
-router.put("/:id", ownDriver, run((req) => driverClient.updateDriver(req.params.id, req.body)));
-router.post("/:id/vehicle", ownDriver, run((req) => driverClient.createVehicle(req.params.id, req.body)));
-router.put("/:id/vehicle", ownDriver, run((req) => driverClient.updateVehicle(req.params.id, req.body)));
+router.put("/:id/location", requireRoles("DRIVER"), run((req) => driverClient.updateDriverLocation(req.params.id, req.body)));
+router.put("/:id/online", requireRoles("DRIVER"), run((req) => driverClient.goOnline(req.params.id)));
+router.put("/:id/offline", requireRoles("DRIVER"), run((req) => driverClient.goOffline(req.params.id)));
+router.put("/:id", requireRoles("DRIVER"), run((req) => driverClient.updateDriver(req.params.id, req.body)));
+router.post("/:id/vehicle", requireRoles("DRIVER"), run((req) => driverClient.createVehicle(req.params.id, req.body)));
+router.put("/:id/vehicle", requireRoles("DRIVER"), run((req) => driverClient.updateVehicle(req.params.id, req.body)));
 
 module.exports = router;

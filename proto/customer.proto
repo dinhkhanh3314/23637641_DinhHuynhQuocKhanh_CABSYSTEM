@@ -5,6 +5,7 @@ package customer;
 service CustomerService {
   rpc CreateCustomer (CreateCustomerRequest) returns (CustomerResponse);
   rpc GetCustomer (GetCustomerRequest) returns (CustomerResponse);
+  rpc GetCustomers (EmptyRequest) returns (CustomerListResponse);
   rpc UpdateCustomer (UpdateCustomerRequest) returns (CustomerResponse);
 }
 
@@ -19,6 +20,8 @@ message GetCustomerRequest {
   int32 user_id = 1;
 }
 
+message EmptyRequest {}
+
 message UpdateCustomerRequest {
   int32 user_id = 1;
   string full_name = 2;
@@ -31,4 +34,8 @@ message CustomerResponse {
   int32 user_id = 2;
   string full_name = 3;
   string gender = 4;
+}
+
+message CustomerListResponse {
+  repeated CustomerResponse customers = 1;
 }

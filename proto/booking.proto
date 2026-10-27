@@ -10,6 +10,7 @@ service BookingService {
   rpc AcceptBooking (GetBookingRequest) returns (BookingResponse);
   rpc CancelBooking (CancelBookingRequest) returns (BookingResponse);
   rpc RejectBooking (GetBookingRequest) returns (BookingResponse);
+  rpc SyncTripStatus (SyncTripStatusRequest) returns (BookingResponse);
 }
 
 message CreateBookingRequest {
@@ -40,6 +41,12 @@ message UpdateBookingStatusRequest {
 message CancelBookingRequest {
   int32 id = 1;
   string cancel_reason = 2;
+}
+
+message SyncTripStatusRequest {
+  int32 booking_id = 1;
+  int32 trip_id = 2;
+  string trip_status = 3;
 }
 
 message BookingResponse {

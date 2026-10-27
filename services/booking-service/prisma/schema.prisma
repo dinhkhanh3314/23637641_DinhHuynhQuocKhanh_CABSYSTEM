@@ -10,6 +10,8 @@ model Booking {
   id                  Int      @id @default(autoincrement())
   customerId          Int      @map("customer_id")
   driverId            Int?     @map("driver_id")
+  tripId              Int?     @map("trip_id")
+  tripStatus          String?  @map("trip_status") @db.VarChar(30)
 
   pickupLatitude      Decimal  @map("pickup_latitude") @db.Decimal(10, 7)
   pickupLongitude     Decimal  @map("pickup_longitude") @db.Decimal(10, 7)

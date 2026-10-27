@@ -1,6 +1,5 @@
 const { PrismaPg } = require("@prisma/adapter-pg");
 const { PrismaClient } = require("@prisma/client");
-const redisClient = require("../redisClient");
 
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
@@ -106,7 +105,10 @@ async function goOnline(driverId) {
     throw new Error("DRIVER_NOT_APPROVED");
   }
 
-  await redisClient.set(`driver:status:${driverId}`, "ONLINE");
+  await prisma.driver.update({
+    where: { id: driverId },
+    data: { isOnline: true },
+  });
 
   return {
     driverId,
@@ -115,15 +117,10 @@ async function goOnline(driverId) {
 }
 
 async function goOffline(driverId) {
-  const driver = await prisma.driver.findUnique({
+  await prisma.driver.update({
     where: { id: driverId },
+    data: { isOnline: false },
   });
-
-  if (!driver) {
-    throw new Error("DRIVER_NOT_FOUND");
-  }
-
-  await redisClient.set(`driver:status:${driverId}`, "OFFLINE");
 
   return {
     driverId,
@@ -132,20 +129,12 @@ async function goOffline(driverId) {
 }
 
 async function getOnlineDrivers() {
-  const keys = await redisClient.keys("driver:status:*");
-
-  const onlineDrivers = [];
-
-  for (const key of keys) {
-    const status = await redisClient.get(key);
-
-    if (status === "ONLINE") {
-      const driverId = key.replace("driver:status:", "");
-
-      onlineDrivers.push(Number(driverId));
-    }
-  }
-  return onlineDrivers;
+  const drivers = await prisma.driver.findMany({
+    where: { isOnline: true },
+    select: { id: true },
+    orderBy: { id: "asc" },
+  });
+  return drivers.map((driver) => driver.id);
 }
 
 async function getDrivers() {
@@ -169,22 +158,33 @@ async function updateDriverLocation(driverId, longitude, latitude) {
     throw new Error("DRIVER_NOT_FOUND");
   }
 
-  const status = await redisClient.get(`driver:status:${driverId}`);
-
-  if (status !== "ONLINE") {
+  if (!driver.isOnline) {
     throw new Error("DRIVER_NOT_ONLINE");
   }
 
-  await redisClient.geoAdd("driver:locations", {
+  const coordinates = {
     longitude: Number(longitude),
     latitude: Number(latitude),
-    member: String(driverId),
+  };
+  if (
+    !Number.isFinite(coordinates.longitude) ||
+    coordinates.longitude < -180 ||
+    coordinates.longitude > 180 ||
+    !Number.isFinite(coordinates.latitude) ||
+    coordinates.latitude < -90 ||
+    coordinates.latitude > 90
+  ) {
+    throw new Error("INVALID_COORDINATES");
+  }
+
+  await prisma.driver.update({
+    where: { id: driverId },
+    data: coordinates,
   });
 
   return {
     driverId,
-    longitude: Number(longitude),
-    latitude: Number(latitude),
+    ...coordinates,
   };
 }
 
@@ -197,74 +197,83 @@ async function getDriverLocation(driverId) {
     throw new Error("DRIVER_NOT_FOUND");
   }
 
-  const location = await redisClient.geoPos(
-    "driver:locations",
-    String(driverId),
-  );
-
-  if (!location || !location[0]) {
+  if (driver.latitude === null || driver.longitude === null) {
     throw new Error("LOCATION_NOT_FOUND");
   }
 
   return {
     driverId,
-    longitude: Number(location[0].longitude),
-    latitude: Number(location[0].latitude),
+    longitude: driver.longitude,
+    latitude: driver.latitude,
   };
 }
 
 async function getNearbyDrivers(latitude, longitude, radius, page = 1, limit = 20) {
-  const results = await redisClient.geoSearchWith(
-    "driver:locations",
-    {
-      longitude: Number(longitude),
-      latitude: Number(latitude),
-    },
-    {
-      radius: Number(radius),
-      unit: "km",
-    },
-    ["WITHDIST", "WITHCOORD"],
-  );
-
-  const onlineDrivers = [];
-
-  for (const item of results) {
-    const driverId = Number(item.member);
-
-    const status = await redisClient.get(`driver:status:${driverId}`);
-
-    if (status === "ONLINE") {
-      const driver = await prisma.driver.findUnique({
-        where: {
-          id: driverId,
-        },
-      });
-
-      if (driver) {
-        onlineDrivers.push({
-          id: driver.id,
-          userId: driver.userId,
-          fullName: driver.fullName,
-          phone: driver.phone,
-          status: driver.status,
-          latitude: Number(item.coordinates.latitude),
-          longitude: Number(item.coordinates.longitude),
-          distance: Number(item.distance),
-        });
-      }
-    }
+  const center = {
+    latitude: Number(latitude),
+    longitude: Number(longitude),
+  };
+  const radiusKm = Number(radius);
+  if (
+    !Number.isFinite(center.latitude) ||
+    center.latitude < -90 ||
+    center.latitude > 90 ||
+    !Number.isFinite(center.longitude) ||
+    center.longitude < -180 ||
+    center.longitude > 180 ||
+    !Number.isFinite(radiusKm) ||
+    radiusKm <= 0
+  ) {
+    throw new Error("INVALID_COORDINATES");
   }
+
+  const candidates = await prisma.driver.findMany({
+    where: {
+      isOnline: true,
+      latitude: { not: null },
+      longitude: { not: null },
+      application: { is: { status: "APPROVED" } },
+    },
+    include: { vehicle: true, application: true },
+  });
+
+  const radians = (degrees) => (degrees * Math.PI) / 180;
+  const nearbyDrivers = candidates
+    .map((driver) => {
+      const latitudeDelta = radians(driver.latitude - center.latitude);
+      const longitudeDelta = radians(driver.longitude - center.longitude);
+      const haversine =
+        Math.sin(latitudeDelta / 2) ** 2 +
+        Math.cos(radians(center.latitude)) *
+          Math.cos(radians(driver.latitude)) *
+          Math.sin(longitudeDelta / 2) ** 2;
+      const distance =
+        6371 * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+
+      return {
+        id: driver.id,
+        userId: driver.userId,
+        fullName: driver.fullName,
+        phone: driver.phone,
+        status: driver.status,
+        isOnline: driver.isOnline,
+        latitude: driver.latitude,
+        longitude: driver.longitude,
+        distance,
+      };
+    })
+    .filter((driver) => driver.distance <= radiusKm)
+    .sort((left, right) => left.distance - right.distance);
 
   const safePage = Math.max(1, Number(page) || 1);
   const safeLimit = Math.min(100, Math.max(1, Number(limit) || 20));
   const start = (safePage - 1) * safeLimit;
 
   return {
-    drivers: onlineDrivers.slice(start, start + safeLimit),
+    drivers: nearbyDrivers.slice(start, start + safeLimit),
     page: safePage,
     limit: safeLimit,
-    total: onlineDrivers.length,
+    total: nearbyDrivers.length,
   };
 }
 

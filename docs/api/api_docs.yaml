@@ -6,7 +6,10 @@ info:
     REST contract exposed by the CAB System API Gateway.
     Client/Postman calls port 3000. The Gateway validates JWT and calls
     microservices through gRPC. Internal service HTTP ports are not part of the
-    client contract.
+    client contract. Access to Customer, Driver, Booking, Trip, Payment, and
+    Notification resources is role-wide where the route permits that role;
+    resource ownership is not enforced for those operations. All /api routes
+    require a valid Bearer JWT except the public /api/auth/* routes.
 servers:
   - url: http://localhost:3000
     description: Local Docker Compose Gateway
@@ -29,6 +32,12 @@ paths:
       responses:
         '200':
           description: Gateway process is running
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: UP }
   /ready:
     get:
       tags: [Health]
@@ -36,8 +45,20 @@ paths:
       responses:
         '200':
           description: Gateway and dependencies are ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [READY] }
         '503':
           description: One or more dependencies are unavailable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [NOT_READY] }
   /health/services:
     get:
       tags: [Health]
@@ -45,8 +66,16 @@ paths:
       responses:
         '200':
           description: All services are healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceHealth'
         '503':
           description: At least one service is down
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceHealth'
   /api/:
     get:
       tags: [Health]
@@ -54,6 +83,12 @@ paths:
       responses:
         '200':
           description: API Gateway information
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: CABSystem API Gateway }
   /api/auth/register:
     post:
       tags: [Auth]
@@ -65,13 +100,18 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '201': { description: Account created }
+        '201':
+          description: Customer account created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
         '400': { description: Invalid request }
         '409': { description: Account already exists }
   /api/auth/login:
     post:
       tags: [Auth]
       security: []
+      description: Login returns a Bearer access token valid for 30 minutes.
       requestBody:
         required: true
         content:
@@ -79,7 +119,12 @@ paths:
             schema:
               $ref: '#/components/schemas/LoginRequest'
       responses:
-        '200': { description: Login successful }
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '400': { description: Email or phone and password are required }
         '401': { description: Invalid credentials }
   /api/auth/driver/send-otp:
     post:
@@ -90,23 +135,39 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required: [phone]
-              properties:
-                phone: { type: string }
+              $ref: '#/components/schemas/SendDriverOtpRequest'
       responses:
-        '200': { description: OTP sent }
+        '200':
+          description: OTP sent; the OTP field is omitted in production
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  otp: { type: string, description: Returned only outside production }
+        '400': { description: Phone is required }
   /api/auth/driver/verify-otp:
     post:
       tags: [Auth]
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyDriverOtpRequest' }
       responses:
         '200': { description: OTP verified }
-        '400': { description: Invalid OTP }
+        '400': { description: Phone and OTP are required or OTP is invalid }
   /api/auth/driver/register:
     post:
       tags: [Auth]
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverApplicationRequest' }
       responses:
         '201': { description: Driver application created }
         '400': { description: Invalid application }
@@ -114,11 +175,33 @@ paths:
     post:
       tags: [Auth]
       security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetDriverPasswordRequest' }
       responses:
         '200': { description: Driver password set }
+        '400': { description: Phone and password are required; password must be at least 8 characters }
+  /api/customers:
+    post:
+      tags: [Customer]
+      description: Creates the profile for the authenticated user; userId is taken from the JWT.
+      responses:
+        '201': { description: Customer profile created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    get:
+      tags: [Customer]
+      description: Returns all Customer profiles to Customer, Operator, and Admin roles.
+      responses:
+        '200': { description: Customer list returned in a customers array }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/customers/{userId}:
     get:
       tags: [Customer]
+      description: Any Customer, Operator, or Admin can retrieve a Customer profile by ID.
       parameters:
         - $ref: '#/components/parameters/UserId'
       responses:
@@ -127,21 +210,37 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
     put:
       tags: [Customer]
+      description: Any Customer, Operator, or Admin can update a Customer profile by ID.
       parameters:
         - $ref: '#/components/parameters/UserId'
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object } }
+          application/json: { schema: { $ref: '#/components/schemas/CustomerUpdate' } }
       responses:
         '200': { description: Customer updated }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers:
+    post:
+      tags: [Driver]
+      description: Operator and Admin roles can create a Driver profile.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverCreate' }
+      responses:
+        '201': { description: Driver profile created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     get:
       tags: [Driver]
+      description: Returns all Driver profiles to Customer, Driver, Operator, and Admin roles.
       responses:
         '200': { description: Driver list }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/{id}:
     get:
       tags: [Driver]
@@ -149,6 +248,8 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Driver returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     put:
       tags: [Driver]
       parameters:
@@ -156,25 +257,29 @@ paths:
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object } }
+          application/json: { schema: { $ref: '#/components/schemas/DriverUpdate' } }
       responses:
         '200': { description: Driver updated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/nearby:
     get:
       tags: [Driver]
-      description: Returns online drivers within the fixed default radius of 1 km.
+      description: Returns online drivers within the fixed default radius of 1 km. Provide lat/lng or the latitude/longitude aliases.
       parameters:
-        - { name: lat, in: query, required: true, schema: { type: number } }
-        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: lat, in: query, schema: { type: number, minimum: -90, maximum: 90 }, description: Latitude }
+        - { name: lng, in: query, schema: { type: number, minimum: -180, maximum: 180 }, description: Longitude }
         - { name: page, in: query, schema: { type: integer, default: 1 } }
         - { name: limit, in: query, schema: { type: integer, default: 20 } }
       responses:
         '200': { description: Nearby driver list with pagination }
         '400': { description: Invalid coordinates }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/online:
     get:
       tags: [Driver]
-      description: Operator/Admin endpoint for online drivers.
+      description: Returns online drivers to Driver, Operator, and Admin roles.
       responses:
         '200': { description: Online driver list }
         '403': { $ref: '#/components/responses/Forbidden' }
@@ -185,6 +290,8 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Driver location }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     put:
       tags: [Driver]
       parameters:
@@ -192,9 +299,11 @@ paths:
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object } }
+          application/json: { schema: { $ref: '#/components/schemas/DriverLocationUpdate' } }
       responses:
         '200': { description: Location updated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/{id}/online:
     put:
       tags: [Driver]
@@ -202,6 +311,8 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Driver is online }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/{id}/offline:
     put:
       tags: [Driver]
@@ -209,37 +320,100 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Driver is offline }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/applications:
     get:
       tags: [Driver]
+      description: Only Operator and Admin roles may view driver applications.
       responses:
         '200': { description: Application list }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/drivers/applications/{id}:
+    get:
+      tags: [Driver]
+      description: Only Operator and Admin roles may view a driver application.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200': { description: Application returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/applications/{id}/approve:
     put:
       tags: [Driver]
+      description: Only Operator and Admin roles may approve a driver application.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Application approved }
         '403': { $ref: '#/components/responses/Forbidden' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /api/drivers/applications/{id}/reject:
     put:
       tags: [Driver]
+      description: Only Operator and Admin roles may reject a driver application.
       parameters:
         - $ref: '#/components/parameters/Id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string }
       responses:
         '200': { description: Application rejected }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/drivers/applications/{id}/resubmit:
     put:
       tags: [Driver]
       parameters:
         - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverApplicationRequest' }
       responses:
         '200': { description: Application resubmitted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/drivers/{id}/vehicle:
+    post:
+      tags: [Driver]
+      description: Driver role endpoint to create/update vehicle data for the driver ID in the path.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Vehicle' }
+      responses:
+        '200': { description: Vehicle created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    put:
+      tags: [Driver]
+      description: Driver role endpoint to update vehicle data for the driver ID in the path.
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Vehicle' }
+      responses:
+        '200': { description: Vehicle updated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/bookings:
     post:
       tags: [Booking]
-      description: Customer ID is derived from the JWT, not the request body.
+      description: Any authenticated role may create a booking; customerId is derived from the JWT, not the request body.
       requestBody:
         required: true
         content:
@@ -247,15 +421,19 @@ paths:
             schema:
               $ref: '#/components/schemas/BookingCreate'
       responses:
-        '201': { description: Booking created }
+        '201': { description: Booking created; response contains message and booking }
+        '400': { description: Invalid booking data }
         '401': { $ref: '#/components/responses/Unauthorized' }
     get:
       tags: [Booking]
+      description: Returns the shared booking list to Customer, Driver, Operator, and Admin roles.
       parameters:
         - { name: page, in: query, schema: { type: integer, default: 1 } }
         - { name: limit, in: query, schema: { type: integer, default: 20 } }
       responses:
         '200': { description: Booking list with pagination }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/bookings/{id}:
     get:
       tags: [Booking]
@@ -263,13 +441,17 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Booking returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/bookings/{id}/accept:
     put:
       tags: [Booking]
+      description: Any Driver role account may accept an eligible booking.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Booking accepted and Trip created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /api/bookings/{id}/reject:
     put:
@@ -278,33 +460,52 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Booking rejected or reassigned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/bookings/{id}/cancel:
     put:
       tags: [Booking]
+      description: Any Customer role account may cancel an eligible booking.
       parameters:
         - $ref: '#/components/parameters/Id'
       requestBody:
         content:
-          application/json: { schema: { type: object } }
+          application/json:
+            schema:
+              type: object
+              properties:
+                cancelReason: { type: string }
       responses:
         '200': { description: Booking and related Trip canceled }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/bookings/{id}/status:
     put:
       tags: [Booking]
       parameters:
         - $ref: '#/components/parameters/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookingStatusUpdate' }
       responses:
         '200': { description: Booking status updated }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/trips:
     post:
       tags: [Trip]
       description: Operator/Admin endpoint for direct Trip creation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TripCreate' }
       responses:
         '201': { description: Trip created }
-    get:
-      tags: [Trip]
-      responses:
-        '200': { description: Trip history }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/trips/{id}:
     get:
       tags: [Trip]
@@ -312,27 +513,36 @@ paths:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Trip returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/trips/{id}/status:
     put:
       tags: [Trip]
+      description: Driver role endpoint. On success, the Gateway synchronizes the Trip ID and status to the related PostgreSQL booking.
       parameters:
         - $ref: '#/components/parameters/Id'
       requestBody:
         required: true
         content:
-          application/json: { schema: { type: object } }
+          application/json: { schema: { $ref: '#/components/schemas/TripStatusUpdate' } }
       responses:
         '200': { description: Trip status updated }
+        '400': { description: Only IN_PROGRESS and COMPLETED statuses are accepted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/trips/{id}/rating:
     get:
       tags: [Trip]
+      description: Customer role only; retrieves the authenticated customer's review for this Trip.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Rating returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Trip]
-      description: Reviewer identity is derived from the JWT.
+      description: Reviewer identity is derived from the JWT; each Customer may submit a review for a completed Trip.
       parameters:
         - $ref: '#/components/parameters/Id'
       requestBody:
@@ -341,47 +551,75 @@ paths:
           application/json: { schema: { $ref: '#/components/schemas/Rating' } }
       responses:
         '201': { description: Rating submitted }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/payments:
     post:
       tags: [Payment]
-      description: Amount and customer identity are derived server-side.
+      description: Customer role only. Select CASH or BANK_TRANSFER; customerId and amount are derived server-side. The current mock provider simulates payment processing.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentCreate' }
       responses:
         '201': { description: Payment created }
-    get:
-      tags: [Payment]
-      responses:
-        '200': { description: Payment returned/listed }
+        '400': { description: paymentMethod must be CASH or BANK_TRANSFER }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/payments/estimate/{tripId}:
     get:
       tags: [Payment]
+      description: Customer, Driver, Operator, and Admin roles can view the fare estimate. Fare is 4,000 VND per kilometer with no base fare.
       parameters:
         - $ref: '#/components/parameters/TripId'
       responses:
-        '200': { description: Fare estimate }
+        '200':
+          description: Fare estimate in VND
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FareEstimate' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/payments/{id}:
     get:
       tags: [Payment]
+      description: Customer, Driver, Operator, and Admin roles may retrieve payment records by ID, including the amount.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Payment returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/payments/{id}/process:
     put:
       tags: [Payment]
+      description: Any Customer role account may process an eligible payment.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Payment processed }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/notifications:
     post:
       tags: [Notification]
+      description: Operator and Admin roles may create notifications.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NotificationCreate' }
       responses:
         '201': { description: Notification created }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/notifications/recipient/{recipientId}:
     get:
       tags: [Notification]
+      description: Customer and Driver roles are filtered to their own role. Operator and Admin can query any recipient.
       parameters:
         - name: recipientId
           in: path
@@ -389,20 +627,46 @@ paths:
           schema: { type: integer }
       responses:
         '200': { description: Recipient notifications }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/notifications/recipient/{recipientType}/{recipientId}:
+    get:
+      tags: [Notification]
+      description: Lists notifications for the specified recipient type and ID. Customer and Driver tokens may query only their own role type; Operator and Admin may query either type.
+      parameters:
+        - name: recipientType
+          in: path
+          required: true
+          schema: { type: string, enum: [CUSTOMER, DRIVER] }
+        - name: recipientId
+          in: path
+          required: true
+          schema: { type: integer, minimum: 1 }
+      responses:
+        '200': { description: Notifications for the specified recipient }
+        '400': { description: Invalid recipient type or ID }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/notifications/{id}:
     get:
       tags: [Notification]
+      description: Customer and Driver roles may retrieve notifications addressed to their role; Operator and Admin may retrieve any notification.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Notification returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/notifications/{id}/read:
     put:
       tags: [Notification]
+      description: Customer and Driver roles may mark notifications addressed to their role as read; Operator and Admin may mark any notification as read.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
         '200': { description: Notification marked as read }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
 components:
   securitySchemes:
     bearerAuth:
@@ -434,37 +698,189 @@ components:
     Unauthorized:
       description: Missing or invalid JWT
     Forbidden:
-      description: Role or ownership check failed
+      description: Role access denied
   schemas:
     RegisterRequest:
       type: object
-      required: [phone, password, role]
+      required: [phone, email, password]
       properties:
         phone: { type: string }
         email: { type: string, format: email }
         password: { type: string, minLength: 8, format: password }
-        role: { type: string, enum: [CUSTOMER, DRIVER, ADMIN, OPERATOR] }
-        fullName: { type: string }
+      description: Creates a CUSTOMER account; role and fullName are not accepted by this endpoint.
     LoginRequest:
       type: object
       required: [password]
       properties:
         identifier: { type: string }
-        email: { type: string }
+        email: { type: string, format: email }
         phone: { type: string }
         password: { type: string, format: password }
+      anyOf:
+        - required: [identifier]
+        - required: [email]
+        - required: [phone]
+    SendDriverOtpRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone: { type: string }
+    VerifyDriverOtpRequest:
+      type: object
+      required: [phone, otp]
+      properties:
+        phone: { type: string }
+        otp: { type: string }
+    DriverApplicationRequest:
+      type: object
+      properties:
+        phone: { type: string }
+        email: { type: string, format: email }
+        fullName: { type: string }
+        licenseNo: { type: string }
+        vehicleType: { type: string }
+        plateNumber: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        color: { type: string }
+    SetDriverPasswordRequest:
+      type: object
+      required: [phone, password]
+      properties:
+        phone: { type: string }
+        password: { type: string, minLength: 8, format: password }
+    CustomerUpdate:
+      type: object
+      properties:
+        fullName: { type: string }
+        full_name: { type: string, description: Alias for fullName }
+        dateOfBirth: { type: string, format: date }
+        date_of_birth: { type: string, format: date, description: Alias for dateOfBirth }
+        gender: { type: string }
+    DriverCreate:
+      type: object
+      properties:
+        userId: { type: integer }
+        fullName: { type: string }
+        phone: { type: string }
+        licenseNo: { type: string }
+        vehicleType: { type: string }
+        plateNumber: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        color: { type: string }
+    DriverUpdate:
+      type: object
+      properties:
+        fullName: { type: string }
+        phone: { type: string }
+        licenseNo: { type: string }
+    DriverLocationUpdate:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude: { type: number, minimum: -90, maximum: 90 }
+        longitude: { type: number, minimum: -180, maximum: 180 }
+    Vehicle:
+      type: object
+      properties:
+        vehicleType: { type: string }
+        plateNumber: { type: string }
+        brand: { type: string }
+        model: { type: string }
+        color: { type: string }
     BookingCreate:
       type: object
       required: [pickLat, pickLng, destLat, destLng, vehicleType]
       properties:
-        pickLat: { type: number }
-        pickLng: { type: number }
-        destLat: { type: number }
-        destLng: { type: number }
+        pickLat: { type: number, minimum: -90, maximum: 90 }
+        pickLng: { type: number, minimum: -180, maximum: 180 }
+        destLat: { type: number, minimum: -90, maximum: 90 }
+        destLng: { type: number, minimum: -180, maximum: 180 }
         vehicleType: { type: string }
+    BookingStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+    TripCreate:
+      type: object
+      required: [bookingId, customerId, driverId, pickupLatitude, pickupLongitude, destinationLatitude, destinationLongitude]
+      properties:
+        bookingId: { type: integer }
+        customerId: { type: integer }
+        driverId: { type: integer }
+        pickupLatitude: { type: number, minimum: -90, maximum: 90 }
+        pickupLongitude: { type: number, minimum: -180, maximum: 180 }
+        destinationLatitude: { type: number, minimum: -90, maximum: 90 }
+        destinationLongitude: { type: number, minimum: -180, maximum: 180 }
+    TripStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [IN_PROGRESS, COMPLETED] }
+    PaymentCreate:
+      type: object
+      required: [tripId, paymentMethod]
+      properties:
+        tripId: { type: integer }
+        paymentMethod: { type: string, enum: [CASH, BANK_TRANSFER] }
+      description: The customer ID and amount are set by the Gateway; amount is not read from the request.
+    FareEstimate:
+      type: object
+      properties:
+        fare: { $ref: '#/components/schemas/FareDetails' }
+    FareDetails:
+      type: object
+      properties:
+        trip_id: { type: integer }
+        distance_km: { type: number, description: Trip distance rounded to two decimal places }
+        base_fare: { type: number, example: 0 }
+        price_per_km: { type: number, example: 4000 }
+        total_fare: { type: number, description: "Distance in kilometers multiplied by 4,000" }
+        currency: { type: string, example: VND }
+    NotificationCreate:
+      type: object
+      properties:
+        notificationId: { type: integer }
+        recipientId: { type: integer }
+        recipientType: { type: string, enum: [CUSTOMER, DRIVER] }
+        type: { type: string }
+        title: { type: string }
+        message: { type: string }
     Rating:
       type: object
       required: [rating]
       properties:
         rating: { type: integer, minimum: 1, maximum: 5 }
         comment: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        phone: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+        status: { type: string }
+        created_at: { type: string }
+    LoginResponse:
+      type: object
+      properties:
+        id: { type: integer }
+        phone: { type: string }
+        email: { type: string, format: email }
+        role: { type: string }
+        status: { type: string }
+        access_token: { type: string }
+    ServiceHealth:
+      type: object
+      properties:
+        status: { type: string, enum: [HEALTHY, DEGRADED] }
+        gateway: { type: string, enum: [UP] }
+        authService: { type: string, enum: [UP, DOWN] }
+        customerService: { type: string, enum: [UP, DOWN] }
+        driverService: { type: string, enum: [UP, DOWN] }
+        bookingService: { type: string, enum: [UP, DOWN] }
+        tripService: { type: string, enum: [UP, DOWN] }
+        paymentService: { type: string, enum: [UP, DOWN] }
+        notificationService: { type: string, enum: [UP, DOWN] }

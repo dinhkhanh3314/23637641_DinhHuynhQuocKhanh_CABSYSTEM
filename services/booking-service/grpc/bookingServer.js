@@ -8,6 +8,7 @@ const {
   getBookings,
   updateBookingStatus,
   acceptBooking,
+  syncTripStatus,
   cancelBooking,
   rejectBooking,
 } = require("../services/bookingService");
@@ -55,6 +56,7 @@ function mapError(error) {
     CANCEL_REASON_REQUIRED: grpc.status.INVALID_ARGUMENT,
     INVALID_STATUS: grpc.status.INVALID_ARGUMENT,
     TRIP_CREATION_FAILED: grpc.status.UNAVAILABLE,
+    INVALID_TRIP_STATUS: grpc.status.INVALID_ARGUMENT,
   };
 
   return {
@@ -169,6 +171,20 @@ async function RejectBooking(call, callback) {
   }
 }
 
+async function SyncTripStatus(call, callback) {
+  try {
+    const booking = await syncTripStatus(
+      call.request.booking_id,
+      call.request.trip_id,
+      call.request.trip_status,
+    );
+    callback(null, toBookingResponse(booking));
+  } catch (error) {
+    console.error("SyncTripStatus gRPC error:", error);
+    callback(mapError(error));
+  }
+}
+
 function startBookingGrpcServer() {
   const server = new grpc.Server();
 
@@ -180,6 +196,7 @@ function startBookingGrpcServer() {
     AcceptBooking,
     CancelBooking,
     RejectBooking,
+    SyncTripStatus,
   });
 
   const port = process.env.BOOKING_GRPC_PORT || "50054";

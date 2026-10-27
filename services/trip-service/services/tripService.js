@@ -1,5 +1,6 @@
 const Trip = require("../models/trip");
 const Review = require("../models/review");
+const Counter = require("../models/counter");
 
 async function createTrip(data) {
   const existingTrip = await Trip.findOne({
@@ -7,32 +8,58 @@ async function createTrip(data) {
   });
 
   if (existingTrip) {
-    throw new Error("TRIP_ALREADY_EXISTS");
+    return existingTrip;
   }
 
-  const lastTrip = await Trip.findOne().sort({ tripId: -1 }).select("tripId");
+  const lastTrip = await Trip.findOne().sort({ tripId: -1 }).select("tripId").lean();
+  const lastTripId = lastTrip?.tripId || 0;
+  try {
+    await Counter.updateOne(
+      { _id: "trip" },
+      { $max: { sequence: lastTripId } },
+      { upsert: true },
+    );
+  } catch (error) {
+    if (error.code !== 11000) {
+      throw error;
+    }
+  }
 
-  const tripId = lastTrip ? lastTrip.tripId + 1 : 1;
-
-  return Trip.create({
-    tripId,
-
-    bookingId: Number(data.bookingId),
-    customerId: Number(data.customerId),
-    driverId: Number(data.driverId),
-
-    pickup: {
-      latitude: Number(data.pickupLatitude),
-      longitude: Number(data.pickupLongitude),
-    },
-
-    destination: {
-      latitude: Number(data.destinationLatitude),
-      longitude: Number(data.destinationLongitude),
-    },
-
-    status: "ACCEPTED",
-  });
+  const counter = await Counter.findOneAndUpdate(
+    { _id: "trip" },
+    { $inc: { sequence: 1 } },
+    { new: true },
+  );
+  if (!counter) {
+    throw new Error("TRIP_ID_ALLOCATION_FAILED");
+  }
+  try {
+    return await Trip.create({
+      tripId: counter.sequence,
+      bookingId: Number(data.bookingId),
+      customerId: Number(data.customerId),
+      driverId: Number(data.driverId),
+      pickup: {
+        latitude: Number(data.pickupLatitude),
+        longitude: Number(data.pickupLongitude),
+      },
+      destination: {
+        latitude: Number(data.destinationLatitude),
+        longitude: Number(data.destinationLongitude),
+      },
+      status: "ACCEPTED",
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      const trip = await Trip.findOne({
+        bookingId: Number(data.bookingId),
+      });
+      if (trip) {
+        return trip;
+      }
+    }
+    throw error;
+  }
 }
 
 async function startTrip(tripId) {
@@ -42,6 +69,10 @@ async function startTrip(tripId) {
 
   if (!trip) {
     throw new Error("TRIP_NOT_FOUND");
+  }
+
+  if (trip.status === "IN_PROGRESS") {
+    return trip;
   }
 
   if (trip.status !== "ACCEPTED") {
@@ -61,6 +92,11 @@ async function completeTrip(tripId) {
 
   if (!trip) {
     throw new Error("TRIP_NOT_FOUND");
+  }
+
+  if (trip.status === "COMPLETED") {
+    await createPendingReview(trip);
+    return trip;
   }
 
   if (trip.status !== "IN_PROGRESS") {
@@ -125,11 +161,7 @@ async function createReview(data) {
     reviewerId: Number(data.reviewerId),
   });
 
-  if (!existingReview) {
-    throw new Error("REVIEW_NOT_FOUND");
-  }
-
-  if (existingReview.status === "SUBMITTED") {
+  if (existingReview?.status === "SUBMITTED") {
     throw new Error("REVIEW_ALREADY_EXISTS");
   }
 
@@ -138,11 +170,26 @@ async function createReview(data) {
     throw new Error("INVALID_RATING");
   }
 
-  existingReview.rating = rating;
-  existingReview.comment = data.comment || null;
-  existingReview.status = "SUBMITTED";
+  if (existingReview) {
+    existingReview.rating = rating;
+    existingReview.comment = data.comment || null;
+    existingReview.status = "SUBMITTED";
+    return existingReview.save();
+  }
 
-  return existingReview.save();
+  const lastReview = await Review.findOne()
+    .sort({ reviewId: -1 })
+    .select("reviewId");
+  return Review.create({
+    reviewId: lastReview ? lastReview.reviewId + 1 : 1,
+    tripId: Number(data.tripId),
+    reviewerId: Number(data.reviewerId),
+    revieweeId: trip.driverId,
+    reviewerType: "CUSTOMER",
+    rating,
+    comment: data.comment || null,
+    status: "SUBMITTED",
+  });
 }
 
 async function createPendingReview(trip) {

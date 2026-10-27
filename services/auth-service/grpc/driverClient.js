@@ -19,31 +19,43 @@ const client = new driverProto.DriverService(
   grpc.credentials.createInsecure(),
 );
 
-function createDriver(data) {
+function call(method, request) {
   return new Promise((resolve, reject) => {
-    client.CreateDriver(
-      {
-        user_id: data.userId,
-        full_name: data.fullName,
-        phone: data.phone,
-        license_no: data.licenseNo,
-        vehicle_type: data.vehicleType,
-        plate_number: data.plateNumber,
-        brand: data.brand,
-        model: data.model,
-        color: data.color,
-      },
-      (error, response) => {
-        if (error) {
-          return reject(error);
-        }
-
-        resolve(response);
-      },
-    );
+    client[method](request, (error, response) => {
+      if (error) {
+        return reject(error);
+      }
+      resolve(response);
+    });
   });
 }
 
+function createDriver(data) {
+  return call("CreateDriver", {
+    user_id: data.userId,
+    full_name: data.fullName,
+    phone: data.phone,
+    license_no: data.licenseNo,
+    vehicle_type: data.vehicleType,
+    plate_number: data.plateNumber,
+    brand: data.brand,
+    model: data.model,
+    color: data.color,
+  });
+}
+
+const getDrivers = () => call("GetDrivers", {});
+const getApplications = () => call("GetApplications", {});
+const approveApplication = (id) => call("ApproveApplication", { id });
+const goOnline = (driverId) => call("GoOnline", { driver_id: driverId });
+const updateDriverLocation = (driverId, latitude, longitude) =>
+  call("UpdateDriverLocation", { driver_id: driverId, latitude, longitude });
+
 module.exports = {
   createDriver,
+  getDrivers,
+  getApplications,
+  approveApplication,
+  goOnline,
+  updateDriverLocation,
 };

@@ -97,6 +97,7 @@ async function GetNotificationsByRecipient(call, callback) {
   try {
     const notifications = await getNotificationsByRecipient(
       call.request.recipient_id,
+      call.request.recipient_type,
     );
     callback(null, {
       notifications: notifications.map(toNotificationResponse),

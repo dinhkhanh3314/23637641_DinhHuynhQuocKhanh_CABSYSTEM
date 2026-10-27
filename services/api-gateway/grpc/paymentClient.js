@@ -34,7 +34,7 @@ function processPayment(id) {
 }
 
 function estimateFare(tripId) {
-  return call("EstimateFare", { id: Number(tripId) });
+  return call("EstimateFare", { trip_id: Number(tripId) });
 }
 
 module.exports = { createPayment, getPayment, processPayment, estimateFare };
