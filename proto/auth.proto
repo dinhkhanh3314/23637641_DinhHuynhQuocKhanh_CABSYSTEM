@@ -9,6 +9,7 @@ service AuthService {
   rpc VerifyDriverOtp (VerifyDriverOtpRequest) returns (MessageResponse);
   rpc RegisterDriver (RegisterDriverRequest) returns (RegisterDriverResponse);
   rpc SetDriverPassword (SetDriverPasswordRequest) returns (MessageResponse);
+  rpc ChangePassword (ChangePasswordRequest) returns (MessageResponse);
 }
 
 message RegisterCustomerRequest {
@@ -81,4 +82,10 @@ message RegisterDriverResponse {
 message SetDriverPasswordRequest {
   string phone = 1;
   string password = 2;
+}
+
+message ChangePasswordRequest {
+  int32 user_id = 1;
+  string current_password = 2;
+  string new_password = 3;
 }

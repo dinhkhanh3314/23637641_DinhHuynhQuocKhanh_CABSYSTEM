@@ -146,3 +146,7 @@ Khi Customer hủy Booking và Driver chấp nhận cùng lúc, chỉ một thao
 ### 10.6. BRL-30 – Khóa tài khoản
 
 Tài khoản bị Admin khóa không thể đăng nhập; Driver bị khóa không được chọn trong Driver Matching.
+
+### 10.7. BRL-31 – Mật khẩu mặc định và đổi mật khẩu
+
+Sau khi xác thực OTP lần đầu, Driver được cấp mật khẩu ban đầu `12345678`; mật khẩu phải được hash trước khi lưu và xác thực OTP lại không được ghi đè mật khẩu đã đổi. Customer và Driver đã đăng nhập có thể đổi mật khẩu bằng cách cung cấp mật khẩu hiện tại và mật khẩu mới tối thiểu 8 ký tự.

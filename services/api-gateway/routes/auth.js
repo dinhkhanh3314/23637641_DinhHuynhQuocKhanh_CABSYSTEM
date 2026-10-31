@@ -7,8 +7,10 @@ const {
   verifyDriverOtp,
   registerDriver,
   setDriverPassword,
+  changePassword,
 } = require("../grpc/authClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
+const authMiddleware = require("../middlewares/auth");
 
 const router = express.Router();
 
@@ -58,6 +60,36 @@ router.post("/login", async (req, res) => {
     handleError(res, error);
   }
 });
+
+router.put(
+  "/change-password",
+  authMiddleware,
+  authMiddleware.requireRoles("CUSTOMER", "DRIVER"),
+  async (req, res) => {
+    const { currentPassword, newPassword } = req.body || {};
+    if (
+      typeof currentPassword !== "string" ||
+      !currentPassword ||
+      typeof newPassword !== "string" ||
+      newPassword.length < 8
+    ) {
+      return res.status(400).json({
+        message: "Current password and a new password of at least 8 characters are required",
+      });
+    }
+
+    try {
+      const result = await changePassword({
+        userId: req.user.userId,
+        currentPassword,
+        newPassword,
+      });
+      return res.json(result);
+    } catch (error) {
+      return handleError(res, error);
+    }
+  },
+);
 
 router.post("/driver/send-otp", async (req, res) => {
   try {

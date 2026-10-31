@@ -55,6 +55,14 @@ function setDriverPassword(phone, password) {
   return promisify("SetDriverPassword", { phone, password });
 }
 
+function changePassword(data) {
+  return promisify("ChangePassword", {
+    user_id: Number(data.userId),
+    current_password: data.currentPassword,
+    new_password: data.newPassword,
+  });
+}
+
 module.exports = {
   registerCustomer,
   loginCustomer,
@@ -62,4 +70,5 @@ module.exports = {
   verifyDriverOtp,
   registerDriver,
   setDriverPassword,
+  changePassword,
 };

@@ -9,6 +9,7 @@ const {
   sendDriverOtp,
   verifyDriverOtp,
   setDriverPassword,
+  changePassword,
 } = require("../services/authService");
 
 const PROTO_PATH = path.join(__dirname, "../../../proto/auth.proto");
@@ -39,6 +40,10 @@ function mapError(error) {
     USER_NOT_FOUND: grpc.status.NOT_FOUND,
     NOT_DRIVER: grpc.status.FAILED_PRECONDITION,
     PASSWORD_ALREADY_SET: grpc.status.FAILED_PRECONDITION,
+    INVALID_USER_ID: grpc.status.INVALID_ARGUMENT,
+    INVALID_NEW_PASSWORD: grpc.status.INVALID_ARGUMENT,
+    INVALID_CURRENT_PASSWORD: grpc.status.FAILED_PRECONDITION,
+    ROLE_NOT_ALLOWED: grpc.status.PERMISSION_DENIED,
   };
 
   return {
@@ -160,6 +165,23 @@ async function SetDriverPassword(call, callback) {
   }
 }
 
+async function ChangePassword(call, callback) {
+  try {
+    const result = await changePassword(
+      call.request.user_id,
+      call.request.current_password,
+      call.request.new_password,
+    );
+
+    callback(null, {
+      message: result.message,
+    });
+  } catch (error) {
+    console.error("ChangePassword gRPC error:", error);
+    callback(mapError(error));
+  }
+}
+
 function startAuthGrpcServer() {
   const server = new grpc.Server();
 
@@ -170,6 +192,7 @@ function startAuthGrpcServer() {
     VerifyDriverOtp,
     RegisterDriver,
     SetDriverPassword,
+    ChangePassword,
   });
 
   const port = process.env.AUTH_GRPC_PORT || "50051";

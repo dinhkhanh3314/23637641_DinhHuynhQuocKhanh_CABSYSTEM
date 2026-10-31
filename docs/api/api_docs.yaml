@@ -9,7 +9,8 @@ info:
     client contract. Access to Customer, Driver, Booking, Trip, Payment, and
     Notification resources is role-wide where the route permits that role;
     resource ownership is not enforced for those operations. All /api routes
-    require a valid Bearer JWT except the public /api/auth/* routes.
+    require a valid Bearer JWT except explicitly public registration and OTP
+    routes. Password changes require authentication.
 servers:
   - url: http://localhost:3000
     description: Local Docker Compose Gateway
@@ -126,6 +127,25 @@ paths:
               schema: { $ref: '#/components/schemas/LoginResponse' }
         '400': { description: Email or phone and password are required }
         '401': { description: Invalid credentials }
+  /api/auth/change-password:
+    put:
+      tags: [Auth]
+      description: Customer and Driver roles can change their own password after authenticating with the current password. New passwords must contain at least 8 characters.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, format: password }
+                newPassword: { type: string, minLength: 8, format: password }
+      responses:
+        '200': { description: Password changed }
+        '400': { description: Current password is incorrect or the new password is invalid }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /api/auth/driver/send-otp:
     post:
       tags: [Auth]
@@ -157,12 +177,13 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/VerifyDriverOtpRequest' }
       responses:
-        '200': { description: OTP verified }
+        '200': { description: OTP verified. An existing Driver account without a password receives the default password; new Driver accounts receive it after registration. }
         '400': { description: Phone and OTP are required or OTP is invalid }
   /api/auth/driver/register:
     post:
       tags: [Auth]
       security: []
+      description: Creates the Driver account after OTP verification. The initial password is 12345678 and is stored as a hash.
       requestBody:
         required: true
         content:
@@ -175,6 +196,7 @@ paths:
     post:
       tags: [Auth]
       security: []
+      description: Legacy OTP-verified password setup for Driver accounts without a password. New Driver registrations already receive the default password.
       requestBody:
         required: true
         content:

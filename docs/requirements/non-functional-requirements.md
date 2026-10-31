@@ -16,7 +16,7 @@ Hệ thống phải phân quyền chức năng dựa trên vai trò của ngư�
 
 ### 2.3. NFR-03 – Bảo vệ mật khẩu
 
-Mật khẩu người dùng phải được bảo vệ và không được lưu dưới dạng văn bản thuần.
+Mật khẩu người dùng phải được hash và không được lưu dưới dạng văn bản thuần. Customer và Driver phải có thể thay đổi mật khẩu sau khi xác thực mật khẩu hiện tại. Mật khẩu mặc định của Driver là `12345678` sau khi OTP được xác thực.
 
 ### 2.4. NFR-04 – Bảo vệ dữ liệu cá nhân
 

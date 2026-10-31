@@ -9,6 +9,8 @@ const { createDriver } = require("../grpc/driverClient");
 
 const redisClient = require("../redisClient");
 
+const DEFAULT_DRIVER_PASSWORD = "12345678";
+
 const adapter = new PrismaPg({
   connectionString: process.env.DATABASE_URL,
 });
@@ -34,6 +36,17 @@ async function verifyDriverOtp(phone, otp) {
 
   if (savedOtp !== otp) {
     throw new Error("INVALID_OTP");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { phone },
+  });
+  if (user?.role === "DRIVER" && !user.passwordHash) {
+    const passwordHash = await bcrypt.hash(DEFAULT_DRIVER_PASSWORD, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash },
+    });
   }
 
   await redisClient.set(`driver:otp:verified:${phone}`, "true", {
@@ -165,11 +178,12 @@ async function registerDriver(data) {
     throw new Error("USER_ALREADY_EXISTS");
   }
 
+  const passwordHash = await bcrypt.hash(DEFAULT_DRIVER_PASSWORD, 10);
   const user = await prisma.user.create({
     data: {
       phone,
       email,
-      passwordHash: null,
+      passwordHash,
       role: "DRIVER",
       status: "ACTIVE",
     },
@@ -204,6 +218,52 @@ async function registerDriver(data) {
 
     throw new Error("DRIVER_CREATION_FAILED");
   }
+}
+
+async function changePassword(userId, currentPassword, newPassword) {
+  const parsedUserId = Number(userId);
+  if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
+    throw new Error("INVALID_USER_ID");
+  }
+
+  if (typeof newPassword !== "string" || newPassword.length < 8) {
+    throw new Error("INVALID_NEW_PASSWORD");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: parsedUserId },
+  });
+
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  if (!["CUSTOMER", "DRIVER"].includes(user.role)) {
+    throw new Error("ROLE_NOT_ALLOWED");
+  }
+
+  if (user.status !== "ACTIVE") {
+    throw new Error("USER_INACTIVE");
+  }
+
+  if (!user.passwordHash) {
+    throw new Error("PASSWORD_NOT_SET");
+  }
+
+  if (
+    typeof currentPassword !== "string" ||
+    !(await bcrypt.compare(currentPassword, user.passwordHash))
+  ) {
+    throw new Error("INVALID_CURRENT_PASSWORD");
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordHash },
+  });
+
+  return { message: "Đổi mật khẩu thành công" };
 }
 
 async function setDriverPassword(phone, password) {
@@ -250,4 +310,5 @@ module.exports = {
   sendDriverOtp,
   verifyDriverOtp,
   setDriverPassword,
+  changePassword,
 };
