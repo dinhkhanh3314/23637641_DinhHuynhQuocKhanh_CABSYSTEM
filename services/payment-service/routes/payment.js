@@ -1,63 +1,31 @@
 const express = require("express");
 
 const {
-  createPayment,
   getPayment,
   processPayment,
 } = require("../services/paymentService");
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
-  try {
-    const payment = await createPayment(req.body);
-
-    res.status(201).json({
-      message: "Tạo payment thành công",
-      payment,
-    });
-  } catch (error) {
-    console.error(error);
-
-    if (error.message === "PAYMENT_ALREADY_EXISTS") {
-      return res.status(409).json({
-        message: "Payment cho chuyến đi này đã tồn tại",
-      });
-    }
-
-    if (error.message === "INVALID_TRIP_ID") {
-      return res.status(400).json({
-        message: "tripId phải là số nguyên lớn hơn 0",
-      });
-    }
-
-    if (error.message === "INVALID_CUSTOMER_ID") {
-      return res.status(400).json({
-        message: "customerId phải là số nguyên lớn hơn 0",
-      });
-    }
-
-    if (error.message === "INVALID_AMOUNT") {
-      return res.status(400).json({
-        message: "Số tiền thanh toán phải lớn hơn 0",
-      });
-    }
-
-    if (error.message === "INVALID_PAYMENT_METHOD") {
-      return res.status(400).json({
-        message: "Phương thức thanh toán không được để trống",
-      });
-    }
-
-    res.status(500).json({
-      message: "Không thể tạo payment",
-    });
-  }
-});
-
 router.put("/:id/process", async (req, res) => {
   try {
-    const payment = await processPayment(req.params.id);
+    const { amount, paymentMethod } = req.body || {};
+    if (
+      typeof amount !== "number" ||
+      !Number.isFinite(amount) ||
+      amount < 0 ||
+      !paymentMethod
+    ) {
+      return res.status(400).json({
+        message: "A valid amount and paymentMethod are required",
+      });
+    }
+
+    const payment = await processPayment(
+      req.params.id,
+      amount,
+      paymentMethod,
+    );
 
     res.json({
       message:
@@ -78,6 +46,12 @@ router.put("/:id/process", async (req, res) => {
     if (error.message === "PAYMENT_CANNOT_PROCESS") {
       return res.status(409).json({
         message: "Payment không thể xử lý",
+      });
+    }
+
+    if (error.message === "PAYMENT_DETAILS_MISMATCH") {
+      return res.status(400).json({
+        message: "Số tiền hoặc phương thức thanh toán không khớp",
       });
     }
 

@@ -10,8 +10,8 @@
 - Route health, route gốc và route Auth/OTP công khai theo thiết kế.
 - Rate limit được áp dụng trước nhóm route `/api`.
 - Approve/reject Driver application yêu cầu `OPERATOR` hoặc `ADMIN`.
-- Customer, Driver, Booking và Trip kiểm tra ownership/role trước khi truy cập.
-- Payment lấy Customer từ JWT, không tin `customerId` do client gửi.
+- Gateway kiểm tra quyền theo role; API contract hiện không giới hạn truy cập tài nguyên theo user ID sở hữu.
+- Payment yêu cầu JWT và role phù hợp, nhưng không đối chiếu Customer ID của Payment với user ID trong JWT.
 - Rating lấy reviewer từ JWT, không tin `reviewerId` do client gửi.
 - Payment hỗ trợ `Idempotency-Key` để retry không tạo giao dịch mới.
 - Webhook Payment có thể yêu cầu `X-Payment-Webhook-Secret`.

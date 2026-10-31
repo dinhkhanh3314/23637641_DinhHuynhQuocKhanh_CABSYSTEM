@@ -5,24 +5,43 @@ package payment;
 service PaymentService {
   rpc CreatePayment (CreatePaymentRequest) returns (PaymentResponse);
   rpc GetPayment (GetPaymentRequest) returns (PaymentResponse);
-  rpc ProcessPayment (GetPaymentRequest) returns (PaymentResponse);
+  rpc GetPaymentByTrip (GetPaymentByTripRequest) returns (PaymentResponse);
+  rpc ProcessPayment (ProcessPaymentRequest) returns (PaymentResponse);
   rpc EstimateFare (EstimateFareRequest) returns (FareResponse);
+  rpc EstimateFareFromCoordinates (EstimateFareFromCoordinatesRequest) returns (FareResponse);
 }
 
 message EstimateFareRequest {
   int32 trip_id = 1;
 }
 
+message EstimateFareFromCoordinatesRequest {
+  double pickup_latitude = 1;
+  double pickup_longitude = 2;
+  double destination_latitude = 3;
+  double destination_longitude = 4;
+}
+
 message CreatePaymentRequest {
   int32 trip_id = 1;
   int32 customer_id = 2;
-  double amount = 3;
-  string payment_method = 4;
-  string idempotency_key = 5;
+  reserved 3 to 5;
 }
 
 message GetPaymentRequest {
   int32 id = 1;
+}
+
+message GetPaymentByTripRequest {
+  int32 trip_id = 1;
+  reserved 2;
+}
+
+message ProcessPaymentRequest {
+  int32 id = 1;
+  reserved 2;
+  double amount = 3;
+  string payment_method = 4;
 }
 
 message PaymentResponse {

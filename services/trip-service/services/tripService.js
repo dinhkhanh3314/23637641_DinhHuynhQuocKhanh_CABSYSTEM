@@ -216,10 +216,10 @@ async function createPendingReview(trip) {
   });
 }
 
-async function getReview(tripId, reviewerId) {
+async function getReview(tripId) {
   const review = await Review.findOne({
     tripId: Number(tripId),
-    reviewerId: Number(reviewerId),
+    reviewerType: "CUSTOMER",
   });
 
   if (!review) {

@@ -8,8 +8,10 @@ const {
   getReview,
 } = require("../grpc/tripClient");
 const { syncTripStatus } = require("../grpc/bookingClient");
+const { createPayment, estimateFare } = require("../grpc/paymentClient");
 const { grpcErrorToHttp } = require("../grpc/grpcError");
 const { requireRoles } = require("../middlewares/auth");
+const escapeHtml = require("../utils/escapeHtml");
 
 const router = express.Router();
 
@@ -17,6 +19,17 @@ function handleError(res, error) {
   console.error(error);
   const mapped = grpcErrorToHttp(error);
   return res.status(mapped.status).json({ message: mapped.message });
+}
+
+function escapeReviewComment(review) {
+  if (!review) {
+    return review;
+  }
+
+  return {
+    ...review,
+    comment: escapeHtml(review.comment || ""),
+  };
 }
 
 router.post("/", requireRoles("OPERATOR", "ADMIN"), async (req, res) => {
@@ -51,7 +64,18 @@ router.put("/:id/status", requireRoles("DRIVER"), async (req, res) => {
       updatedTrip.tripId,
       updatedTrip.status,
     );
-    res.json({ trip: updatedTrip });
+    const response = { trip: updatedTrip };
+    if (updatedTrip.status === "COMPLETED") {
+      const [fare] = await Promise.all([
+        estimateFare(updatedTrip.tripId),
+        createPayment({
+          tripId: updatedTrip.tripId,
+          customerId: updatedTrip.customerId,
+        }),
+      ]);
+      response.fare = fare;
+    }
+    res.json(response);
   } catch (error) {
     handleError(res, error);
   }
@@ -66,7 +90,7 @@ router.post("/:id/rating", requireRoles("CUSTOMER"), async (req, res) => {
       rating: req.body.rating,
       comment: req.body.comment,
     });
-    res.status(201).json({ review });
+    res.status(201).json({ review: escapeReviewComment(review) });
   } catch (error) {
     handleError(res, error);
   }
@@ -74,8 +98,8 @@ router.post("/:id/rating", requireRoles("CUSTOMER"), async (req, res) => {
 
 router.get("/:id/rating", requireRoles("CUSTOMER"), async (req, res) => {
   try {
-    const review = await getReview(req.params.id, req.user.userId);
-    res.json({ review });
+    const review = await getReview(req.params.id);
+    res.json({ review: escapeReviewComment(review) });
   } catch (error) {
     handleError(res, error);
   }

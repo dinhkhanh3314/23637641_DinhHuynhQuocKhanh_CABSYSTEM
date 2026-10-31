@@ -26,31 +26,65 @@ function calculateDistanceKm(fromLatitude, fromLongitude, toLatitude, toLongitud
   return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function buildFareEstimate(distanceKm, tripId) {
+  const roundedDistanceKm = Number(distanceKm.toFixed(2));
+  const pricePerKm = 4000;
+
+  return {
+    ...(tripId === undefined ? {} : { tripId: Number(tripId) }),
+    distanceKm: roundedDistanceKm,
+    baseFare: 0,
+    pricePerKm,
+    totalFare: Math.round(roundedDistanceKm * pricePerKm),
+    currency: "VND",
+  };
+}
+
+function calculateFareFromCoordinates(data) {
+  const coordinates = [
+    data.pickupLatitude,
+    data.pickupLongitude,
+    data.destinationLatitude,
+    data.destinationLongitude,
+  ].map(Number);
+  const [pickupLatitude, pickupLongitude, destinationLatitude, destinationLongitude] =
+    coordinates;
+
+  if (
+    coordinates.some((coordinate) => !Number.isFinite(coordinate)) ||
+    Math.abs(pickupLatitude) > 90 ||
+    Math.abs(destinationLatitude) > 90 ||
+    Math.abs(pickupLongitude) > 180 ||
+    Math.abs(destinationLongitude) > 180
+  ) {
+    throw new Error("INVALID_COORDINATES");
+  }
+
+  const distanceKm = calculateDistanceKm(
+    pickupLatitude,
+    pickupLongitude,
+    destinationLatitude,
+    destinationLongitude,
+  );
+
+  return buildFareEstimate(distanceKm);
+}
+
 async function calculateFare(tripId) {
   const trip = await getTrip(tripId);
-  const distanceKm = Number(calculateDistanceKm(
+  const distanceKm = calculateDistanceKm(
     trip.pickupLatitude,
     trip.pickupLongitude,
     trip.destinationLatitude,
     trip.destinationLongitude,
-  ).toFixed(2));
-  const pricePerKm = 4000;
+  );
 
-  return {
-    tripId: Number(tripId),
-    distanceKm,
-    baseFare: 0,
-    pricePerKm,
-    totalFare: Math.round(distanceKm * pricePerKm),
-    currency: "VND",
-  };
+  return buildFareEstimate(distanceKm, tripId);
 }
 
 async function createPayment(data) {
   const tripId = Number(data.tripId);
   const customerId = Number(data.customerId);
-  const paymentMethod = data.paymentMethod;
-  const idempotencyKey = data.idempotencyKey;
 
   if (!Number.isInteger(tripId) || tripId <= 0) {
     throw new Error("INVALID_TRIP_ID");
@@ -60,42 +94,56 @@ async function createPayment(data) {
     throw new Error("INVALID_CUSTOMER_ID");
   }
 
-  if (!["CASH", "BANK_TRANSFER"].includes(paymentMethod)) {
-    throw new Error("INVALID_PAYMENT_METHOD");
+  const trip = await getTrip(tripId);
+  if (Number(trip.customerId) !== customerId) {
+    throw new Error("CUSTOMER_TRIP_MISMATCH");
   }
-
-  if (idempotencyKey) {
-    const existingByKey = await prisma.payment.findUnique({
-      where: { idempotencyKey },
-    });
-    if (existingByKey) {
-      return existingByKey;
-    }
+  if (trip.status !== "COMPLETED") {
+    throw new Error("TRIP_NOT_COMPLETED");
   }
 
   const existingPayment = await prisma.payment.findUnique({
-    where: {
-      tripId,
-    },
+    where: { tripId },
   });
-
   if (existingPayment) {
-    throw new Error("PAYMENT_ALREADY_EXISTS");
+    if (existingPayment.customerId !== customerId) {
+      throw new Error("CUSTOMER_TRIP_MISMATCH");
+    }
+    return existingPayment;
   }
 
-  const fare = await calculateFare(tripId);
+  const fare = buildFareEstimate(
+    calculateDistanceKm(
+      trip.pickupLatitude,
+      trip.pickupLongitude,
+      trip.destinationLatitude,
+      trip.destinationLongitude,
+    ),
+    tripId,
+  );
   const amount = fare.totalFare;
 
-  const payment = await prisma.payment.create({
-    data: {
-      tripId,
-      customerId,
-      amount,
-      paymentMethod,
-      idempotencyKey: idempotencyKey || null,
-      status: "PENDING",
-    },
-  });
+  let payment;
+  try {
+    payment = await prisma.payment.create({
+      data: {
+        tripId,
+        customerId,
+        amount,
+        paymentMethod: null,
+        status: "PENDING",
+      },
+    });
+  } catch (error) {
+    if (error.code !== "P2002") {
+      throw error;
+    }
+    payment = await prisma.payment.findUnique({ where: { tripId } });
+    if (!payment || payment.customerId !== customerId) {
+      throw new Error("CUSTOMER_TRIP_MISMATCH");
+    }
+    return payment;
+  }
 
   await publishEvent("payment.events", "PaymentCreated", {
     paymentId: payment.id,
@@ -120,7 +168,19 @@ async function getPayment(paymentId) {
   return payment;
 }
 
-async function processPayment(paymentId) {
+async function getPaymentByTrip(tripId) {
+  const payment = await prisma.payment.findUnique({
+    where: { tripId: Number(tripId) },
+  });
+
+  if (!payment) {
+    throw new Error("PAYMENT_NOT_FOUND");
+  }
+
+  return payment;
+}
+
+async function processPayment(paymentId, amount, paymentMethod) {
   const payment = await prisma.payment.findUnique({
     where: {
       id: Number(paymentId),
@@ -129,6 +189,14 @@ async function processPayment(paymentId) {
 
   if (!payment) {
     throw new Error("PAYMENT_NOT_FOUND");
+  }
+
+  if (
+    !Number.isFinite(Number(amount)) ||
+    Number(amount) !== Number(payment.amount) ||
+    !["CASH", "BANK_TRANSFER"].includes(paymentMethod)
+  ) {
+    throw new Error("PAYMENT_DETAILS_MISMATCH");
   }
 
   if (payment.status !== "PENDING") {
@@ -141,7 +209,7 @@ async function processPayment(paymentId) {
       {
         paymentId: payment.id,
         amount: Number(payment.amount),
-        paymentMethod: payment.paymentMethod,
+        paymentMethod,
       },
     );
 
@@ -154,6 +222,7 @@ async function processPayment(paymentId) {
         },
         data: {
           status: "PAID",
+          paymentMethod,
           transactionId: result.transactionId,
           paidAt: new Date(),
         },
@@ -173,6 +242,7 @@ async function processPayment(paymentId) {
       },
       data: {
         status: "FAILED",
+        paymentMethod,
         failedAt: new Date(),
         failureReason: result.message || "Payment failed",
       },
@@ -193,6 +263,7 @@ async function processPayment(paymentId) {
       },
       data: {
         status: "FAILED",
+        paymentMethod,
         failedAt: new Date(),
         failureReason: "Payment provider unavailable",
       },
@@ -253,7 +324,9 @@ async function handlePaymentWebhook(data) {
 module.exports = {
   createPayment,
   calculateFare,
+  calculateFareFromCoordinates,
   getPayment,
+  getPaymentByTrip,
   processPayment,
   handlePaymentWebhook,
 };

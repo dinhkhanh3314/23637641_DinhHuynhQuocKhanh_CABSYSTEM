@@ -136,10 +136,7 @@ async function submitReviewHandler(call, callback) {
 
 async function getReviewHandler(call, callback) {
   try {
-    const review = await getReview(
-      call.request.tripId,
-      call.request.reviewerId,
-    );
+    const review = await getReview(call.request.tripId);
     callback(null, toReviewResponse(review));
   } catch (error) {
     handleError(callback, error);

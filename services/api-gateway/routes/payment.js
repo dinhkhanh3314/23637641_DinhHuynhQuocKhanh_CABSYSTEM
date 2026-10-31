@@ -1,7 +1,7 @@
 const express = require("express");
 const {
-  createPayment,
   getPayment,
+  getPaymentByTrip,
   processPayment,
   estimateFare,
 } = require("../grpc/paymentClient");
@@ -16,23 +16,19 @@ function handleError(res, error) {
   return res.status(mapped.status).json({ message: mapped.message });
 }
 
-router.post("/", requireRoles("CUSTOMER"), async (req, res) => {
+router.get("/estimate/:tripId", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), async (req, res) => {
   try {
-    res.status(201).json({ payment: await createPayment({
-      trip_id: req.body.tripId,
-      customer_id: req.user.userId,
-      amount: 0,
-      payment_method: req.body.paymentMethod,
-      idempotency_key: req.get("Idempotency-Key"),
-    }) });
+    res.json({ fare: await estimateFare(req.params.tripId) });
   } catch (error) {
     handleError(res, error);
   }
 });
 
-router.get("/estimate/:tripId", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), async (req, res) => {
+router.get("/trip/:tripId", requireRoles("CUSTOMER"), async (req, res) => {
   try {
-    res.json({ fare: await estimateFare(req.params.tripId) });
+    res.json({
+      payment: await getPaymentByTrip(req.params.tripId),
+    });
   } catch (error) {
     handleError(res, error);
   }
@@ -46,12 +42,42 @@ router.get("/:id", requireRoles("CUSTOMER", "DRIVER", "OPERATOR", "ADMIN"), asyn
   }
 });
 
-router.put("/:id/process", requireRoles("CUSTOMER"), async (req, res) => {
+async function processPaymentRequest(req, res, paymentId) {
+  const { amount, paymentMethod } = req.body || {};
+  if (
+    typeof amount !== "number" ||
+    !Number.isFinite(amount) ||
+    amount < 0 ||
+    !["CASH", "BANK_TRANSFER"].includes(paymentMethod)
+  ) {
+    return res.status(400).json({
+      message: "A valid amount and supported paymentMethod are required",
+    });
+  }
+
   try {
-    res.json({ payment: await processPayment(req.params.id) });
+    res.json({
+      payment: await processPayment(paymentId, {
+        amount,
+        paymentMethod,
+      }),
+    });
   } catch (error) {
     handleError(res, error);
   }
+}
+
+router.put("/trip/:tripId/process", requireRoles("CUSTOMER"), async (req, res) => {
+  try {
+    const payment = await getPaymentByTrip(req.params.tripId);
+    return processPaymentRequest(req, res, payment.id);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+router.put("/:id/process", requireRoles("CUSTOMER"), async (req, res) => {
+  return processPaymentRequest(req, res, req.params.id);
 });
 
 module.exports = router;

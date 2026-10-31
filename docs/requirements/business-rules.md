@@ -83,8 +83,7 @@ Driver chỉ có thể xác nhận hoàn thành Trip khi Trip đang ở trạng 
 ## 7. Quy tắc Payment
 
 ### 7.1. BRL-17 – Payment chỉ thực hiện sau khi Trip hoàn thành
-
-Customer chỉ được thực hiện Payment sau khi Trip đã hoàn thành.
+Customer đã xác thực có thể thực hiện Payment sau khi Trip đã hoàn thành; quyền xử lý không bị giới hạn theo Customer ID của Payment.
 
 ### 7.2. BRL-18 – Hỗ trợ nhiều hình thức thanh toán
 
@@ -124,9 +123,9 @@ Admin chỉ tham gia khi cần theo dõi hoặc hỗ trợ xử lý trường h�
 
 ## 10. Quy tắc bổ sung
 
-### 10.1. BRL-25 – Giá cước
+### 10.1. BRL-25 – Giá cước và xác nhận thanh toán
 
-Giá cước ước tính do Booking Service tính khi tạo Booking. Trip sử dụng giá này làm `fare` và Payment sử dụng làm `amount`.
+Khi Trip hoàn thành, hệ thống trả giá cước tính từ tọa độ Trip và tự tạo một Payment `PENDING` với `amount` do Payment Service tính, `paymentMethod` để trống. Customer đã xác thực tra Payment theo Trip ID rồi gửi `amount` và `paymentMethod` để xác nhận; quyền tra cứu và xử lý không bị giới hạn theo Customer ID của Payment. Hệ thống chỉ xử lý khi số tiền khớp, phương thức được hỗ trợ và Payment đang ở trạng thái `PENDING`; Payment vẫn được liên kết với đúng Trip và Customer của Trip. Trip hoàn thành lặp lại không tạo Payment trùng.
 
 ### 10.2. BRL-26 – Trạng thái Driver theo Trip
 

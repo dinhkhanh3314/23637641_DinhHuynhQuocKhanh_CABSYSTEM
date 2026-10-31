@@ -5,7 +5,9 @@ const path = require("path");
 const {
   createPayment,
   calculateFare,
+  calculateFareFromCoordinates,
   getPayment,
+  getPaymentByTrip,
   processPayment,
 } = require("../services/paymentService");
 
@@ -30,7 +32,7 @@ function toPaymentResponse(payment) {
     trip_id: payment.tripId,
     customer_id: payment.customerId,
     amount: Number(payment.amount),
-    payment_method: payment.paymentMethod,
+    payment_method: payment.paymentMethod || "",
     status: payment.status,
     transaction_id: payment.transactionId || "",
     failure_reason: payment.failureReason || "",
@@ -41,13 +43,14 @@ function toPaymentResponse(payment) {
 
 function mapError(error) {
   const codes = {
-    PAYMENT_ALREADY_EXISTS: grpc.status.ALREADY_EXISTS,
     PAYMENT_NOT_FOUND: grpc.status.NOT_FOUND,
     PAYMENT_CANNOT_PROCESS: grpc.status.FAILED_PRECONDITION,
     INVALID_TRIP_ID: grpc.status.INVALID_ARGUMENT,
     INVALID_CUSTOMER_ID: grpc.status.INVALID_ARGUMENT,
+    INVALID_COORDINATES: grpc.status.INVALID_ARGUMENT,
+    PAYMENT_DETAILS_MISMATCH: grpc.status.INVALID_ARGUMENT,
     CUSTOMER_TRIP_MISMATCH: grpc.status.PERMISSION_DENIED,
-    INVALID_PAYMENT_METHOD: grpc.status.INVALID_ARGUMENT,
+    TRIP_NOT_COMPLETED: grpc.status.FAILED_PRECONDITION,
   };
 
   return {
@@ -61,9 +64,6 @@ async function CreatePayment(call, callback) {
     const payment = await createPayment({
       tripId: call.request.trip_id,
       customerId: call.request.customer_id,
-      amount: call.request.amount,
-      paymentMethod: call.request.payment_method,
-      idempotencyKey: call.request.idempotency_key,
     });
     callback(null, toPaymentResponse(payment));
   } catch (error) {
@@ -81,9 +81,32 @@ async function GetPayment(call, callback) {
   }
 }
 
+async function GetPaymentByTrip(call, callback) {
+  try {
+    callback(
+      null,
+      toPaymentResponse(
+        await getPaymentByTrip(call.request.trip_id),
+      ),
+    );
+  } catch (error) {
+    console.error("GetPaymentByTrip gRPC error:", error);
+    callback(mapError(error));
+  }
+}
+
 async function ProcessPayment(call, callback) {
   try {
-    callback(null, toPaymentResponse(await processPayment(call.request.id)));
+    callback(
+      null,
+      toPaymentResponse(
+        await processPayment(
+          call.request.id,
+          call.request.amount,
+          call.request.payment_method,
+        ),
+      ),
+    );
   } catch (error) {
     console.error("ProcessPayment gRPC error:", error);
     callback(mapError(error));
@@ -108,13 +131,36 @@ async function EstimateFare(call, callback) {
   }
 }
 
+async function EstimateFareFromCoordinates(call, callback) {
+  try {
+    const fare = calculateFareFromCoordinates({
+      pickupLatitude: call.request.pickup_latitude,
+      pickupLongitude: call.request.pickup_longitude,
+      destinationLatitude: call.request.destination_latitude,
+      destinationLongitude: call.request.destination_longitude,
+    });
+    callback(null, {
+      distance_km: fare.distanceKm,
+      base_fare: fare.baseFare,
+      price_per_km: fare.pricePerKm,
+      total_fare: fare.totalFare,
+      currency: fare.currency,
+    });
+  } catch (error) {
+    console.error("EstimateFareFromCoordinates gRPC error:", error);
+    callback(mapError(error));
+  }
+}
+
 function startPaymentGrpcServer() {
   const server = new grpc.Server();
   server.addService(paymentProto.PaymentService.service, {
     CreatePayment,
     GetPayment,
+    GetPaymentByTrip,
     ProcessPayment,
     EstimateFare,
+    EstimateFareFromCoordinates,
   });
 
   const port = process.env.PAYMENT_GRPC_PORT || "50056";

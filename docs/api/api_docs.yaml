@@ -421,12 +421,12 @@ paths:
             schema:
               $ref: '#/components/schemas/BookingCreate'
       responses:
-        '201': { description: Booking created; response contains message and booking }
+        '201': { description: Booking created; response contains message, booking, and estimatedFare (distance and VND total). Trip fields are omitted until a trip is created. }
         '400': { description: Invalid booking data }
         '401': { $ref: '#/components/responses/Unauthorized' }
     get:
       tags: [Booking]
-      description: Returns the shared booking list to Customer, Driver, Operator, and Admin roles.
+      description: Returns the shared booking list to Customer, Driver, Operator, and Admin roles. Trip fields are omitted for bookings without a created trip.
       parameters:
         - { name: page, in: query, schema: { type: integer, default: 1 } }
         - { name: limit, in: query, schema: { type: integer, default: 20 } }
@@ -526,14 +526,14 @@ paths:
         content:
           application/json: { schema: { $ref: '#/components/schemas/TripStatusUpdate' } }
       responses:
-        '200': { description: Trip status updated }
+        '200': { description: Trip status updated; when status is COMPLETED, the response includes the fare estimate and the system automatically creates a pending payment }
         '400': { description: Only IN_PROGRESS and COMPLETED statuses are accepted }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /api/trips/{id}/rating:
     get:
       tags: [Trip]
-      description: Customer role only; retrieves the authenticated customer's review for this Trip.
+      description: Customer role only; retrieves a customer review for this Trip by trip ID, without matching the reviewer to the authenticated user. The comment is HTML-escaped in the response.
       parameters:
         - $ref: '#/components/parameters/Id'
       responses:
@@ -542,7 +542,7 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Trip]
-      description: Reviewer identity is derived from the JWT; each Customer may submit a review for a completed Trip.
+      description: Reviewer identity is derived from the JWT; each Customer may submit a review for a completed Trip. The returned comment is HTML-escaped.
       parameters:
         - $ref: '#/components/parameters/Id'
       requestBody:
@@ -553,22 +553,27 @@ paths:
         '201': { description: Rating submitted }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-  /api/payments:
-    post:
+  /api/payments/{id}:
+    get:
       tags: [Payment]
-      description: Customer role only. Select CASH or BANK_TRANSFER; customerId and amount are derived server-side. The current mock provider simulates payment processing.
+      description: Customer, Driver, Operator, and Admin roles may retrieve payment records by ID, including the amount.
       parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/PaymentCreate' }
+        - $ref: '#/components/parameters/Id'
       responses:
-        '201': { description: Payment created }
-        '400': { description: paymentMethod must be CASH or BANK_TRANSFER }
+        '200': { description: Payment returned }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /api/payments/trip/{tripId}:
+    get:
+      tags: [Payment]
+      description: Customer role only; retrieves the payment for a completed Trip without matching its Customer ID to the authenticated user.
+      parameters:
+        - $ref: '#/components/parameters/TripId'
+      responses:
+        '200': { description: Pending or processed payment returned }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Payment not found for this Trip }
   /api/payments/estimate/{tripId}:
     get:
       tags: [Payment]
@@ -583,24 +588,26 @@ paths:
               schema: { $ref: '#/components/schemas/FareEstimate' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
-  /api/payments/{id}:
-    get:
-      tags: [Payment]
-      description: Customer, Driver, Operator, and Admin roles may retrieve payment records by ID, including the amount.
-      parameters:
-        - $ref: '#/components/parameters/Id'
-      responses:
-        '200': { description: Payment returned }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-  /api/payments/{id}/process:
+  /api/payments/trip/{tripId}/process:
     put:
       tags: [Payment]
-      description: Any Customer role account may process an eligible payment.
+      description: Customer submits only the amount and paymentMethod; any authenticated Customer can process a payment by tripId if its amount and status are valid.
       parameters:
-        - $ref: '#/components/parameters/Id'
+        - $ref: '#/components/parameters/TripId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, paymentMethod]
+              properties:
+                amount: { type: number, minimum: 0 }
+                paymentMethod: { type: string, enum: [CASH, BANK_TRANSFER] }
       responses:
         '200': { description: Payment processed }
+        '400': { description: Amount or payment method is invalid or does not match }
+        '404': { description: Payment not found for this Trip }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /api/notifications:
@@ -819,13 +826,6 @@ components:
       required: [status]
       properties:
         status: { type: string, enum: [IN_PROGRESS, COMPLETED] }
-    PaymentCreate:
-      type: object
-      required: [tripId, paymentMethod]
-      properties:
-        tripId: { type: integer }
-        paymentMethod: { type: string, enum: [CASH, BANK_TRANSFER] }
-      description: The customer ID and amount are set by the Gateway; amount is not read from the request.
     FareEstimate:
       type: object
       properties:

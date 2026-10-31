@@ -22,19 +22,48 @@ function call(method, request) {
 }
 
 function createPayment(data) {
-  return call("CreatePayment", data);
+  return call("CreatePayment", {
+    trip_id: Number(data.tripId),
+    customer_id: Number(data.customerId),
+  });
 }
 
 function getPayment(id) {
   return call("GetPayment", { id: Number(id) });
 }
 
-function processPayment(id) {
-  return call("ProcessPayment", { id: Number(id) });
+function getPaymentByTrip(tripId) {
+  return call("GetPaymentByTrip", {
+    trip_id: Number(tripId),
+  });
+}
+
+function processPayment(id, data) {
+  return call("ProcessPayment", {
+    id: Number(id),
+    amount: data.amount,
+    payment_method: data.paymentMethod,
+  });
 }
 
 function estimateFare(tripId) {
   return call("EstimateFare", { trip_id: Number(tripId) });
 }
 
-module.exports = { createPayment, getPayment, processPayment, estimateFare };
+function estimateFareFromCoordinates(data) {
+  return call("EstimateFareFromCoordinates", {
+    pickup_latitude: data.pickupLatitude,
+    pickup_longitude: data.pickupLongitude,
+    destination_latitude: data.destinationLatitude,
+    destination_longitude: data.destinationLongitude,
+  });
+}
+
+module.exports = {
+  createPayment,
+  getPayment,
+  getPaymentByTrip,
+  processPayment,
+  estimateFare,
+  estimateFareFromCoordinates,
+};

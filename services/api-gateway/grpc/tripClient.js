@@ -53,11 +53,8 @@ function submitReview(data) {
   });
 }
 
-function getReview(tripId, reviewerId) {
-  return call("getReview", {
-    tripId: Number(tripId),
-    reviewerId: Number(reviewerId),
-  });
+function getReview(tripId) {
+  return call("getReview", { tripId: Number(tripId) });
 }
 
 module.exports = {
